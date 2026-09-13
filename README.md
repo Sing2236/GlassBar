@@ -4,6 +4,12 @@ A translucent, animated Windows taskbar overlay. GlassBar leaves Explorer runnin
 
 [Website](https://get-glassbar.vercel.app) · [Download](https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe) · [Support](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=Ethanhuynh365%40gmail.com&currency_code=USD)
 
+## Preview
+
+The animation below is captured from the real app, moving from **Aurora** into **Rain**.
+
+![GlassBar running the Aurora and Rain effects](docs/glassbar-effects.gif)
+
 ## Install
 
 Download [GlassBarSetup.exe](https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe), or use the portable `GlassBar.exe` from the latest release.
@@ -43,7 +49,11 @@ The standalone executable will be `release\GlassBar.exe`.
 - Clock: notifications and calendar
 - Gear: effects, opacity, size, startup, GIF stickers, safe taskbar toggle, and exit
 
-Choose **Rain**, **Aurora**, or **Off** in settings. Preferences are kept in `%LOCALAPPDATA%\GlassBar\settings.json`.
+Choose **Rain**, **Aurora**, **Snow**, **Fireflies**, **Pulse**, **Custom**, or **Off** in settings. Preferences are kept in `%LOCALAPPDATA%\GlassBar\settings.json`.
+
+The Custom Effect Lab lets users combine four particle shapes with floating, falling, rising, or drifting motion. Density, speed, size, glow, trail strength, primary accent, and secondary color are editable live. Custom effects can be exported as `.glassfx.json` files and imported on another computer.
+
+GIF stickers are copied into `%LOCALAPPDATA%\GlassBar\Stickers`. Their selected size, opacity, and dragged position are restored after GlassBar restarts.
 
 For UI development without hiding the Windows taskbar, add `--safe`:
 

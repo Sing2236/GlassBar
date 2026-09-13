@@ -138,6 +138,27 @@ try {
     $main = Find-Element 'GlassBarMainWindow' $process.Id
     $designerScreenshot = Capture-Element $main 'customizer.png'
 
+    $builtInEffectsSelectable = $true
+    foreach ($effectTest in @(
+        @{ Id = 'EffectSnow'; Name = 'Snow' },
+        @{ Id = 'EffectFireflies'; Name = 'Fireflies' },
+        @{ Id = 'EffectPulse'; Name = 'Pulse' }
+    )) {
+        Invoke-Element (Find-Element $effectTest.Id $process.Id)
+        Start-Sleep -Milliseconds 160
+        $savedEffect = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).Effect
+        if ($savedEffect -ne $effectTest.Name) { $builtInEffectsSelectable = $false }
+    }
+
+    Invoke-Element (Find-Element 'EffectCustom' $process.Id)
+    $customPanel = Find-Element 'CustomEffectName' $process.Id
+    $customDensity = Find-Element 'CustomDensity' $process.Id
+    $customDensity.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(0.85)
+    Start-Sleep -Milliseconds 220
+    $customSettings = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+    $customEffectSaved = $customSettings.Effect -eq 'Custom' -and
+        [Math]::Abs([double]$customSettings.CustomEffect.Density - 0.85) -lt 0.001
+
     $stickerPicker = Find-Element 'StickerPicker' $process.Id
     $stickerX = [int]($main.Current.BoundingRectangle.Left + 4 + (0.25 * ($main.Current.BoundingRectangle.Width - 8 - 44)) + 22)
     $stickerY = [int]($main.Current.BoundingRectangle.Bottom - 68 + (0.1 * (64 - 44)) + 22)
@@ -153,6 +174,11 @@ try {
     [NativeMouse]::Click([int]($mainRect.Left + 40), [int]($mainRect.Top + 40))
     Start-Sleep -Milliseconds 500
     $settingsDismissed = -not (Test-ElementExists 'SettingsPanel' $process.Id)
+    $customMenuOpened = $menu.Current.IsEnabled
+    $designerOpened = $widthSlider.Current.IsEnabled
+    $customEffectEditorOpened = $customPanel.Current.IsEnabled
+    $stickerSelectorOpened = $stickerPicker.Current.IsEnabled
+    $appliedWindowWidth = [Math]::Round($main.Current.BoundingRectangle.Width)
 
     Stop-Process -Id $process.Id -Force
     Start-Sleep -Seconds 2
@@ -171,14 +197,17 @@ try {
 
     [pscustomobject]@{
         AppResponsive = $process.Responding
-        CustomMenuOpened = $menu.Current.IsEnabled
+        CustomMenuOpened = $customMenuOpened
         SearchValue = $searchValue
-        DesignerOpened = $widthSlider.Current.IsEnabled
-        StickerSelectorOpened = $stickerPicker.Current.IsEnabled
+        DesignerOpened = $designerOpened
+        BuiltInEffectsSelectable = $builtInEffectsSelectable
+        CustomEffectEditorOpened = $customEffectEditorOpened
+        CustomEffectSaved = $customEffectSaved
+        StickerSelectorOpened = $stickerSelectorOpened
         StickerPositionSaved = $savedStickerX -gt 0.25
         StickerRestoredAfterRestart = $stickerRestored
         SettingsDismissedOnBackground = $settingsDismissed
-        AppliedWindowWidth = [Math]::Round($main.Current.BoundingRectangle.Width)
+        AppliedWindowWidth = $appliedWindowWidth
         BarScreenshot = $barScreenshot
         MenuScreenshot = $menuScreenshot
         DesignerScreenshot = $designerScreenshot
