@@ -1,9 +1,14 @@
 bin/
 obj/
+.vercel/
+website/node_modules/
+website/test-results/
+website/playwright-report/
 release/
 publish/
 installer/output/
 .gstack/
+/artifacts/
 .vs/
 .idea/
 *.user

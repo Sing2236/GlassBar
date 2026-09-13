@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using GlassBar.Controls;
 using GlassBar.Interop;
 using GlassBar.Models;
 using GlassBar.Services;
@@ -18,6 +21,10 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly DispatcherTimer _refreshTimer;
     private StartMenuWindow? _startMenu;
+    private StickerConfig? _selectedSticker;
+    private Border? _draggedSticker;
+    private Point _dragStart;
+    private Point _dragOrigin;
     private BarSettings _settings;
     private bool _settingsOpen;
     private bool _initializing = true;
@@ -31,6 +38,7 @@ public partial class MainWindow : Window
         ApplySettings();
 
         Loaded += OnLoaded;
+        BarSurface.SizeChanged += (_, _) => PositionStickers();
         Closed += OnClosed;
         SourceInitialized += OnSourceInitialized;
 
@@ -44,6 +52,7 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         PositionWindow();
+        RenderStickers();
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide();
     }
 
@@ -116,6 +125,11 @@ public partial class MainWindow : Window
         BarRow.Height = new GridLength(_settings.BarHeight);
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
+        _selectedSticker ??= _settings.Stickers.FirstOrDefault();
+        RefreshStickerPicker();
+        if (_selectedSticker is not null) SetStickerSliders(_selectedSticker);
+        StickerSizeSlider.IsEnabled = _settings.Stickers.Count > 0;
+        StickerOpacitySlider.IsEnabled = _settings.Stickers.Count > 0;
     }
 
     private void SaveSettings() => _settingsService.Save(_settings);
@@ -136,13 +150,35 @@ public partial class MainWindow : Window
     private void Settings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(!_settingsOpen);
     private void CloseSettings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(false);
 
+    private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_settingsOpen || e.OriginalSource is not DependencyObject source) return;
+        if (IsWithin(source, SettingsPanel) || IsWithin(source, BarSurface)) return;
+        SetSettingsOpen(false);
+    }
+
+    private static bool IsWithin(DependencyObject source, DependencyObject container)
+    {
+        for (var current = source; current is not null; current = GetParent(current))
+            if (ReferenceEquals(current, container)) return true;
+        return false;
+    }
+
+    private static DependencyObject? GetParent(DependencyObject child)
+    {
+        try { return VisualTreeHelper.GetParent(child); }
+        catch (InvalidOperationException) { return LogicalTreeHelper.GetParent(child); }
+    }
+
     private void SetSettingsOpen(bool open)
     {
         if (open) _startMenu?.Hide();
         _settingsOpen = open;
         SettingsPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        StickerCanvas.IsHitTestVisible = open;
         Height = open ? Math.Min(690, SystemParameters.PrimaryScreenHeight - 18) : _settings.BarHeight + 10;
         PositionWindow();
+        RenderStickers();
     }
 
     private void OpenStartMenu()
@@ -212,6 +248,175 @@ public partial class MainWindow : Window
         Resources["AccentBrush"] = new SolidColorBrush(accent);
         EffectsLayer.Accent = accent;
         SaveSettings();
+    }
+
+    private void AddSticker_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose an animated GIF sticker",
+            Filter = "GIF images (*.gif)|*.gif",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            var sticker = new StickerConfig
+            {
+                FilePath = StickerService.Import(dialog.FileName),
+                DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName)
+            };
+            _settings.Stickers.Add(sticker);
+            _selectedSticker = sticker;
+            RefreshStickerPicker();
+            StickerSizeSlider.IsEnabled = StickerOpacitySlider.IsEnabled = true;
+            SetStickerSliders(sticker);
+            RenderStickers();
+            SaveSettings();
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, $"GlassBar could not add that GIF.\n\n{exception.Message}", "Sticker import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ClearStickers_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.Stickers.Clear();
+        _selectedSticker = null;
+        RefreshStickerPicker();
+        StickerSizeSlider.IsEnabled = StickerOpacitySlider.IsEnabled = false;
+        RenderStickers();
+        SaveSettings();
+    }
+
+    private void StickerSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _selectedSticker is null) return;
+        _selectedSticker.Size = e.NewValue;
+        RenderStickers();
+        SaveSettings();
+    }
+
+    private void StickerOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _selectedSticker is null) return;
+        _selectedSticker.Opacity = e.NewValue;
+        RenderStickers();
+        SaveSettings();
+    }
+
+    private void StickerPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_initializing || StickerPicker.SelectedItem is not StickerConfig sticker) return;
+        _selectedSticker = sticker;
+        SetStickerSliders(sticker);
+        foreach (Border frame in StickerCanvas.Children)
+            frame.BorderBrush = ReferenceEquals(frame.Tag, sticker)
+                ? (Brush)Resources["AccentBrush"] : new SolidColorBrush(Color.FromArgb(70, 255, 255, 255));
+    }
+
+    private void RefreshStickerPicker()
+    {
+        if (StickerPicker is null) return;
+        var previous = _initializing;
+        _initializing = true;
+        StickerPicker.ItemsSource = null;
+        StickerPicker.ItemsSource = _settings.Stickers;
+        StickerPicker.SelectedItem = _selectedSticker;
+        StickerPicker.Visibility = _settings.Stickers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _initializing = previous;
+    }
+
+    private void RenderStickers()
+    {
+        if (StickerCanvas is null) return;
+        StickerCanvas.Children.Clear();
+        foreach (var sticker in _settings.Stickers.Where(item => File.Exists(item.FilePath)))
+        {
+            var image = new GifSticker(sticker.FilePath);
+            System.Windows.Automation.AutomationProperties.SetAutomationId(image, $"Sticker-{sticker.Id}");
+            System.Windows.Automation.AutomationProperties.SetName(image, sticker.DisplayName);
+            var frame = new Border
+            {
+                Width = sticker.Size,
+                Height = sticker.Size,
+                Opacity = sticker.Opacity,
+                Child = image,
+                Tag = sticker,
+                Background = Brushes.Transparent,
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = _settingsOpen ? new Thickness(1) : new Thickness(0),
+                BorderBrush = ReferenceEquals(sticker, _selectedSticker)
+                    ? (Brush)Resources["AccentBrush"] : new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)),
+                Cursor = _settingsOpen ? Cursors.SizeAll : Cursors.Arrow
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(frame, $"Sticker-{sticker.Id}");
+            System.Windows.Automation.AutomationProperties.SetName(frame, sticker.DisplayName);
+            frame.MouseLeftButtonDown += Sticker_MouseLeftButtonDown;
+            frame.MouseMove += Sticker_MouseMove;
+            frame.MouseLeftButtonUp += Sticker_MouseLeftButtonUp;
+            StickerCanvas.Children.Add(frame);
+        }
+        PositionStickers();
+    }
+
+    private void PositionStickers()
+    {
+        if (StickerCanvas is null) return;
+        foreach (Border frame in StickerCanvas.Children)
+        {
+            if (frame.Tag is not StickerConfig sticker) continue;
+            Canvas.SetLeft(frame, Math.Clamp(sticker.X, 0, 1) * Math.Max(0, StickerCanvas.ActualWidth - sticker.Size));
+            Canvas.SetTop(frame, Math.Clamp(sticker.Y, 0, 1) * Math.Max(0, StickerCanvas.ActualHeight - sticker.Size));
+        }
+    }
+
+    private void Sticker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_settingsOpen || sender is not Border { Tag: StickerConfig sticker } frame) return;
+        _selectedSticker = sticker;
+        StickerPicker.SelectedItem = sticker;
+        _draggedSticker = frame;
+        _dragStart = e.GetPosition(StickerCanvas);
+        _dragOrigin = new Point(Canvas.GetLeft(frame), Canvas.GetTop(frame));
+        frame.CaptureMouse();
+        SetStickerSliders(sticker);
+        foreach (Border item in StickerCanvas.Children)
+            item.BorderBrush = ReferenceEquals(item, frame)
+                ? (Brush)Resources["AccentBrush"] : new SolidColorBrush(Color.FromArgb(70, 255, 255, 255));
+        e.Handled = true;
+    }
+
+    private void Sticker_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_draggedSticker is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var current = e.GetPosition(StickerCanvas);
+        var left = Math.Clamp(_dragOrigin.X + current.X - _dragStart.X, 0, Math.Max(0, StickerCanvas.ActualWidth - _draggedSticker.Width));
+        var top = Math.Clamp(_dragOrigin.Y + current.Y - _dragStart.Y, 0, Math.Max(0, StickerCanvas.ActualHeight - _draggedSticker.Height));
+        Canvas.SetLeft(_draggedSticker, left);
+        Canvas.SetTop(_draggedSticker, top);
+    }
+
+    private void Sticker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_draggedSticker?.Tag is not StickerConfig sticker) return;
+        sticker.X = Canvas.GetLeft(_draggedSticker) / Math.Max(1, StickerCanvas.ActualWidth - sticker.Size);
+        sticker.Y = Canvas.GetTop(_draggedSticker) / Math.Max(1, StickerCanvas.ActualHeight - sticker.Size);
+        _draggedSticker.ReleaseMouseCapture();
+        _draggedSticker = null;
+        SaveSettings();
+    }
+
+    private void SetStickerSliders(StickerConfig sticker)
+    {
+        var previous = _initializing;
+        _initializing = true;
+        StickerSizeSlider.Value = sticker.Size;
+        StickerOpacitySlider.Value = sticker.Opacity;
+        _initializing = previous;
     }
 
     private void HideNativeCheck_Click(object sender, RoutedEventArgs e)

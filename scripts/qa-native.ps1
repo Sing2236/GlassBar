@@ -3,11 +3,62 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Drawing
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+public static class NativeMouse {
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+    public static void Click(int x, int y) {
+        SetCursorPos(x, y);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    }
+    public static void Drag(int x1, int y1, int x2, int y2) {
+        SetCursorPos(x1, y1);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        for (int step = 1; step <= 10; step++) {
+            SetCursorPos(x1 + ((x2 - x1) * step / 10), y1 + ((y2 - y1) * step / 10));
+            Thread.Sleep(20);
+        }
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    }
+}
+"@
 
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $executable = Join-Path $projectRoot 'bin\Release\net8.0-windows\GlassBar.exe'
 $evidenceDir = Join-Path $projectRoot '.gstack\qa-reports\screenshots'
+$settingsFolder = Join-Path $env:LOCALAPPDATA 'GlassBar'
+$settingsPath = Join-Path $settingsFolder 'settings.json'
+$hadSettings = Test-Path -LiteralPath $settingsPath
+$settingsBackup = if ($hadSettings) { [IO.File]::ReadAllText($settingsPath) } else { $null }
+$stickerFixture = Join-Path $projectRoot 'tests\fixtures\qa-sticker.gif'
 New-Item -ItemType Directory -Path $evidenceDir -Force | Out-Null
+New-Item -ItemType Directory -Path $settingsFolder -Force | Out-Null
+
+$qaSettings = [ordered]@{
+    HideNativeTaskbar = $false
+    StartWithWindows = $false
+    Opacity = 0.82
+    EffectIntensity = 0.72
+    Effect = 'Rain'
+    Accent = '#7DD3FC'
+    BarWidth = 980
+    BarHeight = 68
+    CornerRadius = 22
+    Stickers = @([ordered]@{
+        Id = 'qa-sticker'
+        DisplayName = 'QA Sticker'
+        FilePath = $stickerFixture
+        X = 0.25
+        Y = 0.1
+        Size = 44
+        Opacity = 0.95
+    })
+}
+[IO.File]::WriteAllText($settingsPath, ($qaSettings | ConvertTo-Json -Depth 5))
 
 function Find-Element([string]$automationId, [int]$processId, [int]$timeoutSeconds = 8) {
     $deadline = [DateTime]::UtcNow.AddSeconds($timeoutSeconds)
@@ -30,6 +81,17 @@ function Find-Element([string]$automationId, [int]$processId, [int]$timeoutSecon
 function Invoke-Element($element) {
     $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
     $pattern.Invoke()
+}
+
+function Test-ElementExists([string]$automationId, [int]$processId) {
+    $idCondition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $automationId)
+    $processCondition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $processId)
+    $condition = New-Object System.Windows.Automation.AndCondition($idCondition, $processCondition)
+    $element = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants, $condition)
+    return $null -ne $element
 }
 
 function Capture-Element($element, [string]$name) {
@@ -76,11 +138,30 @@ try {
     $main = Find-Element 'GlassBarMainWindow' $process.Id
     $designerScreenshot = Capture-Element $main 'customizer.png'
 
+    $stickerPicker = Find-Element 'StickerPicker' $process.Id
+    $stickerX = [int]($main.Current.BoundingRectangle.Left + 4 + (0.25 * ($main.Current.BoundingRectangle.Width - 8 - 44)) + 22)
+    $stickerY = [int]($main.Current.BoundingRectangle.Bottom - 68 + (0.1 * (64 - 44)) + 22)
+    [NativeMouse]::Drag(
+        $stickerX,
+        $stickerY,
+        ($stickerX + 80),
+        $stickerY)
+    Start-Sleep -Milliseconds 500
+    $savedStickerX = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).Stickers[0].X
+
+    $mainRect = $main.Current.BoundingRectangle
+    [NativeMouse]::Click([int]($mainRect.Left + 40), [int]($mainRect.Top + 40))
+    Start-Sleep -Milliseconds 500
+    $settingsDismissed = -not (Test-ElementExists 'SettingsPanel' $process.Id)
+
     [pscustomobject]@{
         AppResponsive = $process.Responding
         CustomMenuOpened = $menu.Current.IsEnabled
         SearchValue = $searchValue
         DesignerOpened = $widthSlider.Current.IsEnabled
+        StickerSelectorOpened = $stickerPicker.Current.IsEnabled
+        StickerPositionSaved = $savedStickerX -gt 0.25
+        SettingsDismissedOnBackground = $settingsDismissed
         AppliedWindowWidth = [Math]::Round($main.Current.BoundingRectangle.Width)
         BarScreenshot = $barScreenshot
         MenuScreenshot = $menuScreenshot
@@ -90,4 +171,6 @@ try {
 finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
     Start-Sleep -Milliseconds 700
+    if ($hadSettings) { [IO.File]::WriteAllText($settingsPath, $settingsBackup) }
+    elseif (Test-Path -LiteralPath $settingsPath) { Remove-Item -LiteralPath $settingsPath -Force }
 }

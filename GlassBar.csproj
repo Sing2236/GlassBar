@@ -7,6 +7,11 @@
     <Nullable>enable</Nullable>
     <AssemblyName>GlassBar</AssemblyName>
     <RootNamespace>GlassBar</RootNamespace>
+    <Version>0.1.0</Version>
+    <Authors>Ethan Huynh</Authors>
+    <Product>GlassBar</Product>
+    <Description>A customizable transparent taskbar for Windows.</Description>
+    <ApplicationIcon>assets\GlassBar.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 </Project>

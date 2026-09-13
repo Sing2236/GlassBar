@@ -25,6 +25,10 @@ public sealed class SettingsService
         catch { settings = new BarSettings(); }
 
         settings.StartWithWindows = IsStartWithWindows();
+        settings.Stickers ??= [];
+        foreach (var sticker in settings.Stickers)
+            if (string.IsNullOrWhiteSpace(sticker.DisplayName) || sticker.DisplayName == "Sticker")
+                sticker.DisplayName = Path.GetFileNameWithoutExtension(sticker.FilePath);
         return settings;
     }
 

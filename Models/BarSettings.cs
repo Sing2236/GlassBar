@@ -11,4 +11,5 @@ public sealed class BarSettings
     public double BarWidth { get; set; } = 980;
     public double BarHeight { get; set; } = 68;
     public double CornerRadius { get; set; } = 22;
+    public List<StickerConfig> Stickers { get; set; } = [];
 }

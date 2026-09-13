@@ -144,6 +144,31 @@
       </Setter>
     </Style>
 
+    <Style x:Key="StickerPickerItem" TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="#C9D6E5" />
+      <Setter Property="Margin" Value="0,0,7,7" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="StickerChoice" Padding="{TemplateBinding Padding}" CornerRadius="9"
+                    Background="#0FFFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="StickerChoice" Property="Background" Value="#20FFFFFF" /></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="StickerChoice" Property="Background" Value="#251EC8F0" />
+                <Setter TargetName="StickerChoice" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                <Setter Property="Foreground" Value="#F8FAFC" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="GlassScrollBar" TargetType="ScrollBar">
       <Setter Property="Width" Value="7" /><Setter Property="Background" Value="Transparent" />
       <Setter Property="Template">
@@ -160,7 +185,7 @@
     </Style>
   </Window.Resources>
 
-  <Grid x:Name="WindowRoot">
+  <Grid x:Name="WindowRoot" Background="Transparent" PreviewMouseLeftButtonDown="WindowRoot_PreviewMouseLeftButtonDown">
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
       <RowDefinition x:Name="BarRow" Height="68" />
@@ -168,7 +193,8 @@
 
     <Border x:Name="SettingsPanel" Grid.Row="0" Width="470" HorizontalAlignment="Right" VerticalAlignment="Stretch"
             Margin="0,8,8,12" Padding="22" Visibility="Collapsed" CornerRadius="22"
-            Background="#ED111722" BorderBrush="#28FFFFFF" BorderThickness="1">
+            Background="#ED111722" BorderBrush="#28FFFFFF" BorderThickness="1"
+            AutomationProperties.AutomationId="SettingsPanel">
       <Border.Effect><DropShadowEffect BlurRadius="28" Opacity="0.42" ShadowDepth="8" Color="#000000" /></Border.Effect>
       <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource GlassScrollBar}" /></ScrollViewer.Resources>
@@ -229,6 +255,41 @@
             <Slider x:Name="CornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="10" Maximum="32" TickFrequency="2" VerticalAlignment="Center" ValueChanged="CornerSlider_ValueChanged" AutomationProperties.AutomationId="CornerSlider" />
           </Grid>
 
+          <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+            <StackPanel>
+              <StackPanel>
+                <TextBlock Text="GIF stickers" FontWeight="SemiBold" />
+                <TextBlock Text="Add one, then drag it anywhere on the bar" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                  <Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddSticker_Click" AutomationProperties.AutomationId="AddSticker" />
+                  <Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearStickers_Click" AutomationProperties.AutomationId="ClearStickers" />
+                </StackPanel>
+              </StackPanel>
+              <ListBox x:Name="StickerPicker" Margin="0,13,0,0" Background="Transparent" BorderThickness="0"
+                       ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="StickerPicker_SelectionChanged"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="StickerPicker">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Grid Margin="0,13,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="StickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="24" Maximum="110" ValueChanged="StickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="StickerSizeSlider" />
+              </Grid>
+              <Grid Margin="0,7,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="StickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="StickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="StickerOpacitySlider" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
           <Grid Margin="0,19,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
@@ -286,7 +347,7 @@
                 <DataTemplate>
                   <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0">
                     <Grid Width="24" Height="30">
-                      <TextBlock Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
+                      <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
                       <Image Source="{Binding Icon}" Width="23" Height="23" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
                       <Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="#73839B">
                         <Ellipse.Style>
@@ -298,6 +359,11 @@
                       </Ellipse>
                     </Grid>
                   </Button>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                      <Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -315,6 +381,7 @@
             <Button Style="{StaticResource TinyButton}" Click="Settings_Click" ToolTip="Customize GlassBar" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" AutomationProperties.AutomationId="SettingsButton" />
           </StackPanel>
         </Grid>
+        <Canvas x:Name="StickerCanvas" Background="Transparent" IsHitTestVisible="False" />
       </Grid>
     </Border>
   </Grid>
