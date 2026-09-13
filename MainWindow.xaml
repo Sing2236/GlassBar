@@ -57,7 +57,7 @@
       <Setter Property="BorderBrush" Value="#1FFFFFFF" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="13,8" />
-      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="Margin" Value="0,0,8,8" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <Setter.Value>
@@ -218,7 +218,7 @@
             Background="#ED111722" BorderBrush="#28FFFFFF" BorderThickness="1"
             AutomationProperties.AutomationId="SettingsPanel">
       <Border.Effect><DropShadowEffect BlurRadius="28" Opacity="0.42" ShadowDepth="8" Color="#000000" /></Border.Effect>
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,0">
         <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource GlassScrollBar}" /></ScrollViewer.Resources>
         <StackPanel>
           <DockPanel>
