@@ -2,6 +2,8 @@
 
 A translucent, animated Windows taskbar overlay. GlassBar leaves Explorer running and only hides the native taskbar window while GlassBar is open. Closing GlassBar restores it immediately.
 
+[Website](https://get-glassbar.vercel.app) · [Download](https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe) · [Support](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=Ethanhuynh365%40gmail.com&currency_code=USD)
+
 ## Install
 
 Download [GlassBarSetup.exe](https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe), or use the portable `GlassBar.exe` from the latest release.
