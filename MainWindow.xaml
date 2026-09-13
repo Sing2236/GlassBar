@@ -248,12 +248,13 @@
                   Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
                   AutomationProperties.AutomationId="CustomEffectPanel">
             <StackPanel>
-              <DockPanel>
+              <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Style="{StaticResource ChoiceButton}" Margin="12,0,0,8"
+                        Content="Randomize" Click="RandomizeEffect_Click" AutomationProperties.AutomationId="RandomizeEffect" />
                 <StackPanel>
                   <TextBlock Text="Custom effect lab" FontWeight="SemiBold" />
                   <TextBlock x:Name="CustomEffectSummary" Text="Orb · Float" Foreground="{StaticResource MutedText}" FontSize="11" />
                 </StackPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource ChoiceButton}" Content="Randomize" Click="RandomizeEffect_Click" AutomationProperties.AutomationId="RandomizeEffect" />
               </DockPanel>
 
               <TextBox x:Name="CustomEffectNameBox" Style="{StaticResource GlassTextBox}" Margin="0,12,0,0" MaxLength="40"
