@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -28,11 +29,14 @@ public partial class MainWindow : Window
     private Point _dragOrigin;
     private BarSettings _settings;
     private bool _settingsOpen;
+    private bool _widthDragActive;
     private bool _initializing = true;
 
     public MainWindow(bool safeMode = false)
     {
         InitializeComponent();
+        WidthSlider.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(WidthSlider_DragStarted));
+        WidthSlider.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(WidthSlider_DragCompleted));
         _settings = _settingsService.Load();
         if (safeMode) _settings.HideNativeTaskbar = false;
         RunningApps.ItemsSource = _apps;
@@ -121,6 +125,7 @@ public partial class MainWindow : Window
         IntensitySlider.Value = _settings.EffectIntensity;
         WidthSlider.Maximum = Math.Max(720, SystemParameters.PrimaryScreenWidth - 24);
         WidthSlider.Value = Math.Min(_settings.BarWidth, WidthSlider.Maximum);
+        WidthValueText.Text = $"{Math.Round(WidthSlider.Value)} px";
         HeightSlider.Value = _settings.BarHeight;
         CornerSlider.Value = _settings.CornerRadius;
         BarSurface.CornerRadius = new CornerRadius(_settings.CornerRadius);
@@ -372,8 +377,26 @@ public partial class MainWindow : Window
 
     private void WidthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (WidthValueText is not null)
+            WidthValueText.Text = $"{Math.Round(e.NewValue)} px{(_widthDragActive ? " · release to apply" : "")}";
         if (_initializing) return;
         _settings.BarWidth = e.NewValue;
+        if (_widthDragActive) return;
+        PositionWindow();
+        SaveSettings();
+    }
+
+    private void WidthSlider_DragStarted(object sender, DragStartedEventArgs e)
+    {
+        _widthDragActive = true;
+        WidthValueText.Text = $"{Math.Round(WidthSlider.Value)} px · release to apply";
+    }
+
+    private void WidthSlider_DragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        _widthDragActive = false;
+        _settings.BarWidth = WidthSlider.Value;
+        WidthValueText.Text = $"{Math.Round(WidthSlider.Value)} px";
         PositionWindow();
         SaveSettings();
     }

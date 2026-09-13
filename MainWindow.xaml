@@ -340,7 +340,7 @@
           </Grid>
           <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Bar width" FontWeight="SemiBold" /><TextBlock Text="Responsive to your screen" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <StackPanel><TextBlock Text="Bar width" FontWeight="SemiBold" /><TextBlock x:Name="WidthValueText" Text="980 px" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <Slider x:Name="WidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="720" Maximum="1600" TickFrequency="20" VerticalAlignment="Center" ValueChanged="WidthSlider_ValueChanged" AutomationProperties.AutomationId="WidthSlider" />
           </Grid>
           <Grid Margin="0,16,0,0">

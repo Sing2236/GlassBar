@@ -15,6 +15,16 @@ public static class NativeMouse {
         mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
         mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
     }
+    public static void Down(int x, int y) {
+        SetCursorPos(x, y);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+    }
+    public static void Move(int x, int y) {
+        SetCursorPos(x, y);
+    }
+    public static void Up() {
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    }
     public static void Drag(int x1, int y1, int x2, int y2) {
         SetCursorPos(x1, y1);
         mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
@@ -138,6 +148,22 @@ try {
     $main = Find-Element 'GlassBarMainWindow' $process.Id
     $designerScreenshot = Capture-Element $main 'customizer.png'
 
+    $widthBeforeDrag = [Math]::Round($main.Current.BoundingRectangle.Width)
+    $sliderRect = $widthSlider.Current.BoundingRectangle
+    $sliderFraction = ($range.Current.Value - $range.Current.Minimum) / ($range.Current.Maximum - $range.Current.Minimum)
+    $thumbX = [int]($sliderRect.Left + 8 + $sliderFraction * ($sliderRect.Width - 16))
+    $thumbY = [int]($sliderRect.Top + $sliderRect.Height / 2)
+    [NativeMouse]::Down($thumbX, $thumbY)
+    [NativeMouse]::Move(($thumbX + 55), $thumbY)
+    Start-Sleep -Milliseconds 280
+    $widthDuringDrag = [Math]::Round((Find-Element 'GlassBarMainWindow' $process.Id).Current.BoundingRectangle.Width)
+    [NativeMouse]::Up()
+    Start-Sleep -Milliseconds 450
+    $main = Find-Element 'GlassBarMainWindow' $process.Id
+    $widthAfterDrag = [Math]::Round($main.Current.BoundingRectangle.Width)
+    $widthStableDuringDrag = $widthDuringDrag -eq $widthBeforeDrag
+    $widthAppliedOnRelease = $widthAfterDrag -gt $widthBeforeDrag
+
     $builtInEffectsSelectable = $true
     foreach ($effectTest in @(
         @{ Id = 'EffectSnow'; Name = 'Snow' },
@@ -158,6 +184,8 @@ try {
     $customSettings = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
     $customEffectSaved = $customSettings.Effect -eq 'Custom' -and
         [Math]::Abs([double]$customSettings.CustomEffect.Density - 0.85) -lt 0.001
+    Invoke-Element (Find-Element 'EffectRain' $process.Id)
+    Start-Sleep -Milliseconds 220
 
     $stickerPicker = Find-Element 'StickerPicker' $process.Id
     $stickerX = [int]($main.Current.BoundingRectangle.Left + 4 + (0.25 * ($main.Current.BoundingRectangle.Width - 8 - 44)) + 22)
@@ -191,9 +219,12 @@ try {
     Invoke-Element (Find-Element 'SettingsButton' $process.Id)
     $restartPicker = Find-Element 'StickerPicker' $process.Id
     $restartSettings = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
-    $stickerRestored = @($restartSettings.Stickers).Count -eq 1 -and
-        [Math]::Abs([double]$restartSettings.Stickers[0].X - [double]$savedStickerX) -lt 0.001 -and
-        $restartPicker.Current.IsEnabled
+    $restartStickerCount = @($restartSettings.Stickers).Count
+    $restartStickerX = [double]$restartSettings.Stickers[0].X
+    $restartPickerEnabled = $restartPicker.Current.IsEnabled
+    $stickerRestored = $restartStickerCount -eq 1 -and
+        [Math]::Abs($restartStickerX - [double]$savedStickerX) -lt 0.001 -and
+        $restartPickerEnabled
 
     [pscustomobject]@{
         AppResponsive = $process.Responding
@@ -203,9 +234,13 @@ try {
         BuiltInEffectsSelectable = $builtInEffectsSelectable
         CustomEffectEditorOpened = $customEffectEditorOpened
         CustomEffectSaved = $customEffectSaved
+        WidthStableDuringDrag = $widthStableDuringDrag
+        WidthAppliedOnRelease = $widthAppliedOnRelease
         StickerSelectorOpened = $stickerSelectorOpened
         StickerPositionSaved = $savedStickerX -gt 0.25
         StickerRestoredAfterRestart = $stickerRestored
+        RestartStickerCount = $restartStickerCount
+        RestartPosition = [Math]::Round($restartStickerX, 4)
         SettingsDismissedOnBackground = $settingsDismissed
         AppliedWindowWidth = $appliedWindowWidth
         BarScreenshot = $barScreenshot
