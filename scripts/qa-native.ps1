@@ -154,6 +154,21 @@ try {
     Start-Sleep -Milliseconds 500
     $settingsDismissed = -not (Test-ElementExists 'SettingsPanel' $process.Id)
 
+    Stop-Process -Id $process.Id -Force
+    Start-Sleep -Seconds 2
+    Get-Process GlassBar -ErrorAction SilentlyContinue |
+        Where-Object Path -EQ $executable |
+        Stop-Process -Force
+    $process = Start-Process -FilePath $executable -ArgumentList '--safe' -PassThru
+    Start-Sleep -Seconds 2
+    $restartMain = Find-Element 'GlassBarMainWindow' $process.Id
+    Invoke-Element (Find-Element 'SettingsButton' $process.Id)
+    $restartPicker = Find-Element 'StickerPicker' $process.Id
+    $restartSettings = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+    $stickerRestored = @($restartSettings.Stickers).Count -eq 1 -and
+        [Math]::Abs([double]$restartSettings.Stickers[0].X - [double]$savedStickerX) -lt 0.001 -and
+        $restartPicker.Current.IsEnabled
+
     [pscustomobject]@{
         AppResponsive = $process.Responding
         CustomMenuOpened = $menu.Current.IsEnabled
@@ -161,6 +176,7 @@ try {
         DesignerOpened = $widthSlider.Current.IsEnabled
         StickerSelectorOpened = $stickerPicker.Current.IsEnabled
         StickerPositionSaved = $savedStickerX -gt 0.25
+        StickerRestoredAfterRestart = $stickerRestored
         SettingsDismissedOnBackground = $settingsDismissed
         AppliedWindowWidth = [Math]::Round($main.Current.BoundingRectangle.Width)
         BarScreenshot = $barScreenshot

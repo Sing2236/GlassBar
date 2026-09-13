@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -112,6 +113,7 @@ public partial class MainWindow : Window
             Resources["AccentBrush"] = new SolidColorBrush(accent);
             EffectsLayer.Accent = accent;
         }
+        EffectsLayer.CustomEffect = _settings.CustomEffect;
         EffectsLayer.Mode = _settings.Effect;
         EffectsLayer.Intensity = _settings.EffectIntensity;
         if (Resources["GlassBackground"] is SolidColorBrush glass) glass.Opacity = _settings.Opacity;
@@ -125,6 +127,8 @@ public partial class MainWindow : Window
         BarRow.Height = new GridLength(_settings.BarHeight);
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
+        ApplyCustomEffectToControls();
+        CustomEffectPanel.Visibility = _settings.Effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         _selectedSticker ??= _settings.Stickers.FirstOrDefault();
         RefreshStickerPicker();
         if (_selectedSticker is not null) SetStickerSliders(_selectedSticker);
@@ -193,7 +197,159 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: string effect }) return;
         _settings.Effect = effect;
         EffectsLayer.Mode = effect;
+        CustomEffectPanel.Visibility = effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         SaveSettings();
+    }
+
+    private void ApplyCustomEffectToControls()
+    {
+        var previous = _initializing;
+        _initializing = true;
+        CustomEffectNameBox.Text = _settings.CustomEffect.Name;
+        CustomDensitySlider.Value = _settings.CustomEffect.Density;
+        CustomSpeedSlider.Value = _settings.CustomEffect.Speed;
+        CustomSizeSlider.Value = _settings.CustomEffect.Size;
+        CustomGlowSlider.Value = _settings.CustomEffect.Glow;
+        CustomTrailSlider.Value = _settings.CustomEffect.Trail;
+        CustomEffectSummary.Text = $"{_settings.CustomEffect.Shape} · {_settings.CustomEffect.Motion}";
+        _initializing = previous;
+    }
+
+    private void ActivateCustomEffect(bool rebuildParticles = false)
+    {
+        _settings.Effect = "Custom";
+        EffectsLayer.CustomEffect = _settings.CustomEffect;
+        EffectsLayer.Mode = "Custom";
+        EffectsLayer.RefreshCustomEffect(rebuildParticles);
+        CustomEffectPanel.Visibility = Visibility.Visible;
+        CustomEffectSummary.Text = $"{_settings.CustomEffect.Shape} · {_settings.CustomEffect.Motion}";
+        SaveSettings();
+    }
+
+    private void CustomShape_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string shape }) return;
+        _settings.CustomEffect.Shape = shape;
+        ActivateCustomEffect();
+    }
+
+    private void CustomMotion_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string motion }) return;
+        _settings.CustomEffect.Motion = motion;
+        ActivateCustomEffect(rebuildParticles: true);
+    }
+
+    private void CustomColor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string color }) return;
+        _settings.CustomEffect.SecondaryColor = color;
+        ActivateCustomEffect();
+    }
+
+    private void CustomEffectNameBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Name = string.IsNullOrWhiteSpace(CustomEffectNameBox.Text) ? "My effect" : CustomEffectNameBox.Text.Trim();
+        ActivateCustomEffect();
+    }
+
+    private void CustomDensitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Density = e.NewValue;
+        ActivateCustomEffect(rebuildParticles: true);
+    }
+
+    private void CustomSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Speed = e.NewValue;
+        ActivateCustomEffect();
+    }
+
+    private void CustomSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Size = e.NewValue;
+        ActivateCustomEffect();
+    }
+
+    private void CustomGlowSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Glow = e.NewValue;
+        ActivateCustomEffect();
+    }
+
+    private void CustomTrailSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _settings is null) return;
+        _settings.CustomEffect.Trail = e.NewValue;
+        ActivateCustomEffect();
+    }
+
+    private void RandomizeEffect_Click(object sender, RoutedEventArgs e)
+    {
+        var random = Random.Shared;
+        var shapes = new[] { "Orb", "Spark", "Drop", "Diamond" };
+        var motions = new[] { "Float", "Fall", "Rise", "Drift" };
+        var colors = new[] { "#A78BFA", "#34D399", "#FB7185", "#FBBF24" };
+        _settings.CustomEffect.Shape = shapes[random.Next(shapes.Length)];
+        _settings.CustomEffect.Motion = motions[random.Next(motions.Length)];
+        _settings.CustomEffect.SecondaryColor = colors[random.Next(colors.Length)];
+        _settings.CustomEffect.Density = 0.3 + random.NextDouble() * 0.7;
+        _settings.CustomEffect.Speed = 0.15 + random.NextDouble() * 0.85;
+        _settings.CustomEffect.Size = 0.15 + random.NextDouble() * 0.85;
+        _settings.CustomEffect.Glow = random.NextDouble();
+        _settings.CustomEffect.Trail = random.NextDouble();
+        ApplyCustomEffectToControls();
+        ActivateCustomEffect(rebuildParticles: true);
+    }
+
+    private void ExportEffect_Click(object sender, RoutedEventArgs e)
+    {
+        var safeName = string.Concat(_settings.CustomEffect.Name.Where(character => !Path.GetInvalidFileNameChars().Contains(character)));
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export GlassBar effect",
+            FileName = string.IsNullOrWhiteSpace(safeName) ? "GlassBar-effect" : safeName,
+            DefaultExt = ".glassfx.json",
+            Filter = "GlassBar effects (*.glassfx.json)|*.glassfx.json|JSON files (*.json)|*.json"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_settings.CustomEffect, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private void ImportEffect_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import GlassBar effect",
+            Filter = "GlassBar effects (*.glassfx.json;*.json)|*.glassfx.json;*.json",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            var imported = JsonSerializer.Deserialize<CustomEffectConfig>(File.ReadAllText(dialog.FileName));
+            if (imported is null) throw new InvalidDataException("That file does not contain an effect.");
+            imported.Density = Math.Clamp(imported.Density, 0.2, 1);
+            imported.Speed = Math.Clamp(imported.Speed, 0.1, 1);
+            imported.Size = Math.Clamp(imported.Size, 0.1, 1);
+            imported.Glow = Math.Clamp(imported.Glow, 0, 1);
+            imported.Trail = Math.Clamp(imported.Trail, 0, 1);
+            _settings.CustomEffect = imported;
+            EffectsLayer.CustomEffect = imported;
+            ApplyCustomEffectToControls();
+            ActivateCustomEffect(rebuildParticles: true);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, $"GlassBar could not import that effect.\n\n{exception.Message}", "Effect import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

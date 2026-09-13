@@ -25,6 +25,7 @@ public sealed class SettingsService
         catch { settings = new BarSettings(); }
 
         settings.StartWithWindows = IsStartWithWindows();
+        settings.CustomEffect ??= new CustomEffectConfig();
         settings.Stickers ??= [];
         foreach (var sticker in settings.Stickers)
             if (string.IsNullOrWhiteSpace(sticker.DisplayName) || sticker.DisplayName == "Sticker")

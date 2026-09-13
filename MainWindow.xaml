@@ -144,6 +144,28 @@
       </Setter>
     </Style>
 
+    <Style x:Key="GlassTextBox" TargetType="TextBox">
+      <Setter Property="Foreground" Value="#F8FAFC" />
+      <Setter Property="Background" Value="#12FFFFFF" />
+      <Setter Property="BorderBrush" Value="#24FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="11,8" />
+      <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="TextBoxSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+              <ScrollViewer x:Name="PART_ContentHost" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TextBoxSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="StickerPickerItem" TargetType="ListBoxItem">
       <Setter Property="Foreground" Value="#C9D6E5" />
       <Setter Property="Margin" Value="0,0,7,7" />
@@ -211,12 +233,88 @@
 
           <StackPanel Margin="0,22,0,0">
             <TextBlock Text="AMBIENT EFFECT" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-            <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+            <WrapPanel Margin="0,9,0,0">
               <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" Click="Effect_Click" AutomationProperties.AutomationId="EffectRain" />
               <Button Style="{StaticResource ChoiceButton}" Content="Aurora" Tag="Aurora" Click="Effect_Click" AutomationProperties.AutomationId="EffectAurora" />
+              <Button Style="{StaticResource ChoiceButton}" Content="Snow" Tag="Snow" Click="Effect_Click" AutomationProperties.AutomationId="EffectSnow" />
+              <Button Style="{StaticResource ChoiceButton}" Content="Fireflies" Tag="Fireflies" Click="Effect_Click" AutomationProperties.AutomationId="EffectFireflies" />
+              <Button Style="{StaticResource ChoiceButton}" Content="Pulse" Tag="Pulse" Click="Effect_Click" AutomationProperties.AutomationId="EffectPulse" />
+              <Button Style="{StaticResource ChoiceButton}" Content="Custom" Tag="Custom" Click="Effect_Click" AutomationProperties.AutomationId="EffectCustom" />
               <Button Style="{StaticResource ChoiceButton}" Content="Off" Tag="Off" Click="Effect_Click" AutomationProperties.AutomationId="EffectOff" />
-            </StackPanel>
+            </WrapPanel>
           </StackPanel>
+
+          <Border x:Name="CustomEffectPanel" Margin="0,14,0,0" Padding="14" CornerRadius="14" Visibility="Collapsed"
+                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
+                  AutomationProperties.AutomationId="CustomEffectPanel">
+            <StackPanel>
+              <DockPanel>
+                <StackPanel>
+                  <TextBlock Text="Custom effect lab" FontWeight="SemiBold" />
+                  <TextBlock x:Name="CustomEffectSummary" Text="Orb · Float" Foreground="{StaticResource MutedText}" FontSize="11" />
+                </StackPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource ChoiceButton}" Content="Randomize" Click="RandomizeEffect_Click" AutomationProperties.AutomationId="RandomizeEffect" />
+              </DockPanel>
+
+              <TextBox x:Name="CustomEffectNameBox" Style="{StaticResource GlassTextBox}" Margin="0,12,0,0" MaxLength="40"
+                       TextChanged="CustomEffectNameBox_TextChanged" AutomationProperties.AutomationId="CustomEffectName" />
+
+              <TextBlock Text="PARTICLE SHAPE" Margin="0,13,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,7,0,0">
+                <Button Style="{StaticResource ChoiceButton}" Content="Orb" Tag="Orb" Click="CustomShape_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Spark" Tag="Spark" Click="CustomShape_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Drop" Tag="Drop" Click="CustomShape_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Diamond" Tag="Diamond" Click="CustomShape_Click" />
+              </WrapPanel>
+
+              <TextBlock Text="MOTION" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,7,0,0">
+                <Button Style="{StaticResource ChoiceButton}" Content="Float" Tag="Float" Click="CustomMotion_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Fall" Tag="Fall" Click="CustomMotion_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Rise" Tag="Rise" Click="CustomMotion_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Drift" Tag="Drift" Click="CustomMotion_Click" />
+              </WrapPanel>
+
+              <TextBlock Text="SECONDARY COLOR" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" Click="CustomColor_Click" ToolTip="Violet" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" Click="CustomColor_Click" ToolTip="Mint" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" Click="CustomColor_Click" ToolTip="Rose" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" Click="CustomColor_Click" ToolTip="Amber" />
+              </StackPanel>
+
+              <Grid Margin="0,11,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Density" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="CustomDensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1" ValueChanged="CustomDensitySlider_ValueChanged" AutomationProperties.AutomationId="CustomDensity" />
+              </Grid>
+              <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Speed" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="CustomSpeedSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSpeedSlider_ValueChanged" AutomationProperties.AutomationId="CustomSpeed" />
+              </Grid>
+              <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Particle size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="CustomSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSizeSlider_ValueChanged" AutomationProperties.AutomationId="CustomParticleSize" />
+              </Grid>
+              <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Glow" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="CustomGlowSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomGlowSlider_ValueChanged" AutomationProperties.AutomationId="CustomGlow" />
+              </Grid>
+              <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Trail" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="CustomTrailSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomTrailSlider_ValueChanged" AutomationProperties.AutomationId="CustomTrail" />
+              </Grid>
+
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,11,0,0">
+                <Button Style="{StaticResource ChoiceButton}" Content="Import JSON" Click="ImportEffect_Click" AutomationProperties.AutomationId="ImportEffect" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Export JSON" Click="ExportEffect_Click" AutomationProperties.AutomationId="ExportEffect" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
 
           <StackPanel Margin="0,18,0,0">
             <TextBlock Text="ACCENT COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
@@ -236,7 +334,7 @@
           </Grid>
           <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Effect intensity" FontWeight="SemiBold" /><TextBlock Text="Rain and aurora strength" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <StackPanel><TextBlock Text="Effect intensity" FontWeight="SemiBold" /><TextBlock Text="Animation strength" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <Slider x:Name="IntensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" VerticalAlignment="Center" ValueChanged="IntensitySlider_ValueChanged" AutomationProperties.AutomationId="IntensitySlider" />
           </Grid>
           <Grid Margin="0,16,0,0">
