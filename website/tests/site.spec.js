@@ -2,6 +2,9 @@ const { test, expect } = require("@playwright/test");
 
 test("shows the centered GlassBar with working links", async ({ page }, testInfo) => {
   await page.goto("/");
+  const rainDrops = page.locator(".rain i");
+  await expect(rainDrops).toHaveCount(10);
+  await expect(rainDrops.first()).toHaveCSS("animation-name", "rain-fall");
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
