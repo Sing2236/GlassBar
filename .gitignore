@@ -1,0 +1,15 @@
+bin/
+obj/
+release/
+publish/
+installer/output/
+.gstack/
+.vs/
+.idea/
+*.user
+*.suo
+*.log
+website/node_modules/
+website/.vercel/
+website/dist/
+.DS_Store
