@@ -15,4 +15,8 @@
     <ApplicationIcon>assets\GlassBar.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tools\**\*.cs" />
+    <EmbeddedResource Include="assets\license-public.pem" LogicalName="GlassBar.LicensePublicKey" />
+  </ItemGroup>
 </Project>

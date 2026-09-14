@@ -42,8 +42,13 @@ $executable = Join-Path $projectRoot 'bin\Release\net8.0-windows\GlassBar.exe'
 $evidenceDir = Join-Path $projectRoot '.gstack\qa-reports\screenshots'
 $settingsFolder = Join-Path $env:LOCALAPPDATA 'GlassBar'
 $settingsPath = Join-Path $settingsFolder 'settings.json'
+$licensePath = Join-Path $settingsFolder 'license.json'
 $hadSettings = Test-Path -LiteralPath $settingsPath
 $settingsBackup = if ($hadSettings) { [IO.File]::ReadAllText($settingsPath) } else { $null }
+$hadLicense = Test-Path -LiteralPath $licensePath
+$licenseBackup = if ($hadLicense) { [IO.File]::ReadAllText($licensePath) } else { $null }
+$privateKeyPath = Join-Path $env:USERPROFILE '.glassbar\license-private.pem'
+$issuerProject = Join-Path $projectRoot 'tools\GlassBar.LicenseIssuer\GlassBar.LicenseIssuer.csproj'
 $stickerFixture = Join-Path $projectRoot 'tests\fixtures\qa-sticker.gif'
 New-Item -ItemType Directory -Path $evidenceDir -Force | Out-Null
 New-Item -ItemType Directory -Path $settingsFolder -Force | Out-Null
@@ -69,6 +74,13 @@ $qaSettings = [ordered]@{
     })
 }
 [IO.File]::WriteAllText($settingsPath, ($qaSettings | ConvertTo-Json -Depth 5))
+if (Test-Path -LiteralPath $licensePath) { Remove-Item -LiteralPath $licensePath -Force }
+if (-not (Test-Path -LiteralPath $privateKeyPath)) {
+    throw "The local QA signing key was not found at $privateKeyPath."
+}
+$issuerOutput = @(& dotnet run --project $issuerProject -c Release -- issue $privateKeyPath 'qa@glassbar.local')
+$qaLicenseKey = ($issuerOutput | Where-Object { $_ -like 'GB1.*' } | Select-Object -Last 1).Trim()
+if ([string]::IsNullOrWhiteSpace($qaLicenseKey)) { throw 'The QA license issuer did not return a key.' }
 
 function Find-Element([string]$automationId, [int]$processId, [int]$timeoutSeconds = 8) {
     $deadline = [DateTime]::UtcNow.AddSeconds($timeoutSeconds)
@@ -148,6 +160,32 @@ try {
     $main = Find-Element 'GlassBarMainWindow' $process.Id
     $designerScreenshot = Capture-Element $main 'customizer.png'
 
+    Invoke-Element (Find-Element 'EffectAurora' $process.Id)
+    Start-Sleep -Milliseconds 180
+    $auroraIsFree = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).Effect -eq 'Aurora'
+    Invoke-Element (Find-Element 'EffectRain' $process.Id)
+    Start-Sleep -Milliseconds 180
+    $rainIsFree = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).Effect -eq 'Rain'
+
+    Invoke-Element (Find-Element 'EffectSnow' $process.Id)
+    Start-Sleep -Milliseconds 180
+    $lockedEffect = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).Effect
+    $licenseMessage = Find-Element 'LicenseMessage' $process.Id
+    $premiumLockedWithoutKey = $lockedEffect -eq 'Rain' -and $licenseMessage.Current.Name -like '*requires the $5*'
+
+    $licenseBox = Find-Element 'LicenseKey' $process.Id
+    $licenseBox.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($qaLicenseKey.Substring(0, $qaLicenseKey.Length - 1) + 'x')
+    Invoke-Element (Find-Element 'ActivateLicense' $process.Id)
+    Start-Sleep -Milliseconds 180
+    $invalidKeyRejected = -not (Test-Path -LiteralPath $licensePath) -and
+        (Find-Element 'LicenseMessage' $process.Id).Current.Name -like '*not valid*'
+
+    $licenseBox.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($qaLicenseKey)
+    Invoke-Element (Find-Element 'ActivateLicense' $process.Id)
+    Start-Sleep -Milliseconds 250
+    $proStatus = Find-Element 'ProStatus' $process.Id
+    $licenseActivated = $proStatus.Current.Name -eq 'UNLOCKED' -and (Test-Path -LiteralPath $licensePath)
+
     $widthBeforeDrag = [Math]::Round($main.Current.BoundingRectangle.Width)
     $sliderRect = $widthSlider.Current.BoundingRectangle
     $sliderFraction = ($range.Current.Value - $range.Current.Minimum) / ($range.Current.Maximum - $range.Current.Minimum)
@@ -225,12 +263,20 @@ try {
     $stickerRestored = $restartStickerCount -eq 1 -and
         [Math]::Abs($restartStickerX - [double]$savedStickerX) -lt 0.001 -and
         $restartPickerEnabled
+    $restartProStatus = Find-Element 'ProStatus' $process.Id
+    $licenseRestored = $restartProStatus.Current.Name -eq 'UNLOCKED'
 
     [pscustomobject]@{
         AppResponsive = $process.Responding
         CustomMenuOpened = $customMenuOpened
         SearchValue = $searchValue
         DesignerOpened = $designerOpened
+        RainIsFree = $rainIsFree
+        AuroraIsFree = $auroraIsFree
+        PremiumLockedWithoutKey = $premiumLockedWithoutKey
+        InvalidKeyRejected = $invalidKeyRejected
+        LicenseActivated = $licenseActivated
+        LicenseRestoredAfterRestart = $licenseRestored
         BuiltInEffectsSelectable = $builtInEffectsSelectable
         CustomEffectEditorOpened = $customEffectEditorOpened
         CustomEffectSaved = $customEffectSaved
@@ -253,4 +299,6 @@ finally {
     Start-Sleep -Milliseconds 700
     if ($hadSettings) { [IO.File]::WriteAllText($settingsPath, $settingsBackup) }
     elseif (Test-Path -LiteralPath $settingsPath) { Remove-Item -LiteralPath $settingsPath -Force }
+    if ($hadLicense) { [IO.File]::WriteAllText($licensePath, $licenseBackup) }
+    elseif (Test-Path -LiteralPath $licensePath) { Remove-Item -LiteralPath $licensePath -Force }
 }

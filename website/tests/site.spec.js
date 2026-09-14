@@ -9,16 +9,21 @@ test("shows the centered GlassBar with working links", async ({ page }, testInfo
 
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(page.getByLabel("Example GlassBar")).toBeVisible();
-  await expect(page.getByRole("link")).toHaveCount(2);
+  await expect(page.getByRole("link")).toHaveCount(3);
 
   const download = page.getByRole("link", { name: "Download" });
+  const pro = page.getByRole("link", { name: "Pro $5" });
   const support = page.getByRole("link", { name: "Support" });
 
   await expect(download).toHaveAttribute(
     "href",
     "https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe"
   );
+  await expect(pro).toHaveAttribute("href", /item_name=GlassBar\+Pro\+Lifetime/);
+  await expect(pro).toHaveAttribute("href", /amount=5\.00/);
+  await expect(pro).toHaveAttribute("href", /business=Ethanhuynh365%40gmail\.com/);
   await expect(support).toHaveAttribute("href", /business=Ethanhuynh365%40gmail\.com/);
+  await expect(page.getByText("Rain and Aurora are free", { exact: false })).toBeVisible();
 
   const barBox = await page.getByLabel("Example GlassBar").boundingBox();
   const viewport = page.viewportSize();

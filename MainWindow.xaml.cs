@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     private const int EmergencyHotkeyId = 0xB411;
     private readonly WindowService _windowService = new();
     private readonly SettingsService _settingsService = new();
+    private readonly LicenseService _licenseService = new();
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
@@ -151,6 +153,8 @@ public partial class MainWindow : Window
 
     private void ApplySettings()
     {
+        var premiumEffectReset = !_licenseService.IsPro && IsPremiumEffect(_settings.Effect);
+        if (premiumEffectReset) _settings.Effect = "Rain";
         if (ColorConverter.ConvertFromString(_settings.Accent) is Color accent)
         {
             Resources["AccentBrush"] = new SolidColorBrush(accent);
@@ -172,12 +176,16 @@ public partial class MainWindow : Window
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
         ApplyCustomEffectToControls();
-        CustomEffectPanel.Visibility = _settings.Effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        CustomEffectPanel.Visibility = _settings.Effect == "Custom" && _licenseService.IsPro
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UpdateProUi();
         _selectedSticker ??= _settings.Stickers.FirstOrDefault();
         RefreshStickerPicker();
         if (_selectedSticker is not null) SetStickerSliders(_selectedSticker);
         StickerSizeSlider.IsEnabled = _settings.Stickers.Count > 0;
         StickerOpacitySlider.IsEnabled = _settings.Stickers.Count > 0;
+        if (premiumEffectReset) SaveSettings();
     }
 
     private void SaveSettings() => _settingsService.Save(_settings);
@@ -239,6 +247,7 @@ public partial class MainWindow : Window
     private void Effect_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string effect }) return;
+        if (IsPremiumEffect(effect) && !EnsurePro(effect)) return;
         _settings.Effect = effect;
         EffectsLayer.Mode = effect;
         CustomEffectPanel.Visibility = effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
@@ -261,6 +270,7 @@ public partial class MainWindow : Window
 
     private void ActivateCustomEffect(bool rebuildParticles = false)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.Effect = "Custom";
         EffectsLayer.CustomEffect = _settings.CustomEffect;
         EffectsLayer.Mode = "Custom";
@@ -272,6 +282,7 @@ public partial class MainWindow : Window
 
     private void CustomShape_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         if (sender is not Button { Tag: string shape }) return;
         _settings.CustomEffect.Shape = shape;
         ActivateCustomEffect();
@@ -279,6 +290,7 @@ public partial class MainWindow : Window
 
     private void CustomMotion_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         if (sender is not Button { Tag: string motion }) return;
         _settings.CustomEffect.Motion = motion;
         ActivateCustomEffect(rebuildParticles: true);
@@ -286,6 +298,7 @@ public partial class MainWindow : Window
 
     private void CustomColor_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         if (sender is not Button { Tag: string color }) return;
         _settings.CustomEffect.SecondaryColor = color;
         ActivateCustomEffect();
@@ -294,6 +307,7 @@ public partial class MainWindow : Window
     private void CustomEffectNameBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Name = string.IsNullOrWhiteSpace(CustomEffectNameBox.Text) ? "My effect" : CustomEffectNameBox.Text.Trim();
         ActivateCustomEffect();
     }
@@ -301,6 +315,7 @@ public partial class MainWindow : Window
     private void CustomDensitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Density = e.NewValue;
         ActivateCustomEffect(rebuildParticles: true);
     }
@@ -308,6 +323,7 @@ public partial class MainWindow : Window
     private void CustomSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Speed = e.NewValue;
         ActivateCustomEffect();
     }
@@ -315,6 +331,7 @@ public partial class MainWindow : Window
     private void CustomSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Size = e.NewValue;
         ActivateCustomEffect();
     }
@@ -322,6 +339,7 @@ public partial class MainWindow : Window
     private void CustomGlowSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Glow = e.NewValue;
         ActivateCustomEffect();
     }
@@ -329,12 +347,14 @@ public partial class MainWindow : Window
     private void CustomTrailSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing || _settings is null) return;
+        if (!EnsurePro("Custom Effect Lab")) return;
         _settings.CustomEffect.Trail = e.NewValue;
         ActivateCustomEffect();
     }
 
     private void RandomizeEffect_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         var random = Random.Shared;
         var shapes = new[] { "Orb", "Spark", "Drop", "Diamond" };
         var motions = new[] { "Float", "Fall", "Rise", "Drift" };
@@ -353,6 +373,7 @@ public partial class MainWindow : Window
 
     private void ExportEffect_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         var safeName = string.Concat(_settings.CustomEffect.Name.Where(character => !Path.GetInvalidFileNameChars().Contains(character)));
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
@@ -367,6 +388,7 @@ public partial class MainWindow : Window
 
     private void ImportEffect_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Custom Effect Lab")) return;
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Import GlassBar effect",
@@ -395,6 +417,61 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
+
+    private void BuyPro_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(LicenseService.PurchaseUrl) { UseShellExecute = true });
+            LicenseMessageText.Text = "After payment is verified, your lifetime key is emailed to your PayPal email.";
+        }
+        catch
+        {
+            LicenseMessageText.Text = "GlassBar could not open PayPal. Visit the GlassBar website to purchase Pro.";
+        }
+    }
+
+    private void ActivateLicense_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_licenseService.TryActivate(LicenseKeyBox.Text, out var message))
+        {
+            LicenseMessageText.Text = message;
+            return;
+        }
+
+        LicenseKeyBox.Clear();
+        UpdateProUi();
+        LicenseMessageText.Text = message;
+    }
+
+    private bool EnsurePro(string feature)
+    {
+        if (_licenseService.IsPro) return true;
+        LicenseMessageText.Text = $"{feature} requires the $5 GlassBar Pro lifetime unlock.";
+        ProPanel.BringIntoView();
+        return false;
+    }
+
+    private void UpdateProUi()
+    {
+        var isPro = _licenseService.IsPro;
+        ProStatusText.Text = isPro ? "UNLOCKED" : "LOCKED";
+        ProStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+            isPro ? "#A7F3D0" : "#BEEBFF"));
+        ProEntryPanel.Visibility = isPro ? Visibility.Collapsed : Visibility.Visible;
+        LicenseMessageText.Text = isPro
+            ? $"Lifetime license active for {_licenseService.LicensedEmail}."
+            : "Rain and Aurora are free. Pro effects unlock once for $5.";
+
+        EffectSnowButton.Content = isPro ? "Snow" : "Snow  PRO";
+        EffectFirefliesButton.Content = isPro ? "Fireflies" : "Fireflies  PRO";
+        EffectPulseButton.Content = isPro ? "Pulse" : "Pulse  PRO";
+        EffectCustomButton.Content = isPro ? "Custom" : "Custom  PRO";
+        foreach (var button in new[] { EffectSnowButton, EffectFirefliesButton, EffectPulseButton, EffectCustomButton })
+            button.Opacity = isPro ? 1 : 0.68;
+    }
+
+    private static bool IsPremiumEffect(string effect) => effect is "Snow" or "Fireflies" or "Pulse" or "Custom";
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
