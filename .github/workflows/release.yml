@@ -1,0 +1,63 @@
+name: Build and publish GlassBar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glassbar-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      VERSION: 0.2.${{ github.run_number }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Build standalone executable
+        run: >-
+          dotnet publish .\GlassBar.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:Version=${{ env.VERSION }}
+          -p:InformationalVersion=${{ env.VERSION }}
+          -o .\release
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            throw "Inno Setup compiler was not found at $iscc"
+          }
+          & $iscc "/DMyAppVersion=$env:VERSION" '.\installer\GlassBar.iss'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publish production release
+        shell: pwsh
+        run: |
+          $tag = "v$env:VERSION"
+          gh release create $tag `
+            '.\installer\output\GlassBarSetup.exe' `
+            '.\release\GlassBar.exe' `
+            --repo "${{ github.repository }}" `
+            --title "GlassBar $env:VERSION" `
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

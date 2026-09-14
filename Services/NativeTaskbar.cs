@@ -6,6 +6,8 @@ public static class NativeTaskbar
 {
     private static bool _hiddenByUs;
 
+    public static bool IsHiddenByUs => _hiddenByUs;
+
     public static void Hide()
     {
         SetVisibility(false);
@@ -23,6 +25,11 @@ public static class NativeTaskbar
     {
         SetVisibility(true);
         _hiddenByUs = false;
+    }
+
+    public static void EnsureHidden()
+    {
+        if (_hiddenByUs) SetVisibility(false);
     }
 
     private static void SetVisibility(bool visible)

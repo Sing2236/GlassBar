@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService = new();
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly DispatcherTimer _refreshTimer;
+    private readonly DispatcherTimer _taskbarGuardTimer;
     private StartMenuWindow? _startMenu;
     private StickerConfig? _selectedSticker;
     private Border? _draggedSticker;
@@ -50,6 +51,16 @@ public partial class MainWindow : Window
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += (_, _) => RefreshBar();
         _refreshTimer.Start();
+
+        // Explorer may recreate or re-show its taskbar when a fullscreen or
+        // borderless game changes foreground state. Re-apply our hide state
+        // while GlassBar owns the replacement taskbar.
+        _taskbarGuardTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _taskbarGuardTimer.Tick += (_, _) =>
+        {
+            if (_settings.HideNativeTaskbar) NativeTaskbar.EnsureHidden();
+        };
+        _taskbarGuardTimer.Start();
         RefreshBar();
         _initializing = false;
     }
@@ -72,6 +83,7 @@ public partial class MainWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         _refreshTimer.Stop();
+        _taskbarGuardTimer.Stop();
         _startMenu?.Close();
         var handle = new WindowInteropHelper(this).Handle;
         if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
