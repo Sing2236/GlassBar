@@ -1,6 +1,6 @@
 #define MyAppName "GlassBar"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.2.0"
+  #define MyAppVersion "0.3.0"
 #endif
 #define MyAppPublisher "Ethan Huynh"
 #define MyAppURL "https://github.com/Sing2236/GlassBar"
@@ -25,7 +25,7 @@ SolidCompression=yes
 WizardStyle=modern
 SetupIconFile=..\assets\GlassBar.ico
 CloseApplications=yes
-RestartApplications=no
+RestartApplications=yes
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible

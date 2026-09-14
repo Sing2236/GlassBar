@@ -16,6 +16,8 @@ Download [GlassBarSetup.exe](https://github.com/Sing2236/GlassBar/releases/lates
 
 The installer is per-user, needs no administrator access, and offers to start GlassBar automatically when you sign in.
 
+Installed builds check for updates shortly after launch and every four hours. Updates from `main` are downloaded from GitHub Releases, verified against the release SHA-256 manifest, installed silently, and relaunched. Recovery launches using `--safe` never update automatically.
+
 ## Run from source
 
 ```powershell
@@ -29,6 +31,8 @@ dotnet publish .\GlassBar.csproj -c Release -r win-x64 --self-contained true -p:
 ```
 
 The standalone executable will be `release\GlassBar.exe`.
+
+Every push to `main` runs [the release workflow](.github/workflows/release-main.yml). It produces a versioned Windows executable, installer, and `update.json` checksum manifest, then marks that GitHub release as latest so installed copies can update.
 
 ## Safety
 
