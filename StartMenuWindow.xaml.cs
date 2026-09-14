@@ -13,15 +13,18 @@ public partial class StartMenuWindow : Window
 {
     private readonly StartMenuService _service = new();
     private readonly ObservableCollection<LaunchableApp> _visibleApps = [];
-    private IReadOnlyList<LaunchableApp> _allApps = StartMenuService.GetSystemApps();
-    private bool _loadedAllApps;
+    private CancellationTokenSource? _searchCancellation;
 
     public StartMenuWindow()
     {
         InitializeComponent();
         AppResults.ItemsSource = _visibleApps;
-        Deactivated += (_, _) => Hide();
-        ApplyFilter();
+        Deactivated += (_, _) =>
+        {
+            _searchCancellation?.Cancel();
+            Hide();
+        };
+        ShowResults(StartMenuService.GetSystemApps().Take(24).ToList(), "");
     }
 
     public async void OpenNear(Window taskbar)
@@ -32,15 +35,9 @@ public partial class StartMenuWindow : Window
         Show();
         Activate();
         SearchBox.Focus();
+        SearchBox.SelectAll();
         PlayOpenAnimation();
-
-        if (!_loadedAllApps)
-        {
-            CountText.Text = "Loading more…";
-            _allApps = await _service.GetAppsAsync();
-            _loadedAllApps = true;
-            ApplyFilter();
-        }
+        await RefreshResultsAsync(debounce: false);
     }
 
     private void PlayOpenAnimation()
@@ -73,35 +70,60 @@ public partial class StartMenuWindow : Window
         MenuEffectsLayer.RefreshCustomEffect(settings.Effect == "Custom");
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         SearchHint.Visibility = string.IsNullOrEmpty(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
-        ApplyFilter();
+        await RefreshResultsAsync(debounce: true);
     }
 
-    private void ApplyFilter()
+    private async Task RefreshResultsAsync(bool debounce)
     {
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _searchCancellation = cancellation;
         var query = SearchBox.Text.Trim();
-        var matches = _allApps
-            .Where(app => query.Length == 0 || app.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(app => query.Length > 0 && app.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
-            .ThenByDescending(app => app.IsSystemApp)
-            .ThenBy(app => app.Name)
-            .Take(query.Length == 0 ? 24 : 48)
-            .ToList();
+        CountText.Text = query.Length == 0 ? "Loading apps…" : "Searching Windows…";
 
+        try
+        {
+            if (debounce) await Task.Delay(130, cancellation.Token);
+            var matches = await _service.SearchAsync(query, cancellation.Token);
+            if (!cancellation.IsCancellationRequested && IsVisible) ShowResults(matches, query);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void ShowResults(IReadOnlyList<LaunchableApp> matches, string query)
+    {
         _visibleApps.Clear();
         foreach (var app in matches) _visibleApps.Add(app);
-        SectionTitle.Text = query.Length == 0 ? "APPS" : "SEARCH RESULTS";
-        CountText.Text = $"{matches.Count} shown";
+        AppResults.SelectedIndex = matches.Count > 0 ? 0 : -1;
+        SectionTitle.Text = query.Length == 0 ? "TOP APPS" : "BEST MATCHES";
+        CountText.Text = query.Length == 0 ? $"{matches.Count} apps" : $"{matches.Count} results";
         EmptyState.Visibility = matches.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && _visibleApps.FirstOrDefault() is { } first)
+        if (e.Key is Key.Down or Key.Up or Key.PageDown or Key.PageUp)
         {
-            Launch(first);
+            var step = e.Key switch { Key.Up => -1, Key.PageUp => -6, Key.PageDown => 6, _ => 1 };
+            MoveSelection(step);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter && (AppResults.SelectedItem as LaunchableApp ?? _visibleApps.FirstOrDefault()) is { } selected)
+        {
+            Launch(selected);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            if (SearchBox.Text.Length > 0) SearchBox.Clear(); else Hide();
             e.Handled = true;
         }
     }
@@ -111,9 +133,26 @@ public partial class StartMenuWindow : Window
         if (e.Key == Key.Escape) { Hide(); e.Handled = true; }
     }
 
-    private void App_Click(object sender, RoutedEventArgs e)
+    private void MoveSelection(int step)
     {
-        if (sender is Button { DataContext: LaunchableApp app }) Launch(app);
+        if (_visibleApps.Count == 0) return;
+        var current = Math.Max(0, AppResults.SelectedIndex);
+        AppResults.SelectedIndex = Math.Clamp(current + step, 0, _visibleApps.Count - 1);
+        AppResults.ScrollIntoView(AppResults.SelectedItem);
+    }
+
+    private void AppResults_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        var item = FindParent<ListBoxItem>(source);
+        if (item?.DataContext is LaunchableApp app) Launch(app);
+    }
+
+    private static T? FindParent<T>(DependencyObject source) where T : DependencyObject
+    {
+        for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+            if (current is T match) return match;
+        return null;
     }
 
     private void Launch(LaunchableApp app)
