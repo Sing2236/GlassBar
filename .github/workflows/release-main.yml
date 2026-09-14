@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
@@ -44,6 +44,7 @@ jobs:
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:DebugType=None `
+            -p:IncludeSourceRevisionInInformationalVersion=false `
             -p:Version=$env:GLASSBAR_VERSION `
             -p:InformationalVersion="$env:GLASSBAR_VERSION+${{ github.sha }}" `
             -o .\release
