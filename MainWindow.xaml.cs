@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
+    private readonly DispatcherTimer _fullscreenTimer;
     private StartMenuWindow? _startMenu;
     private StickerConfig? _selectedSticker;
     private Border? _draggedSticker;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
     private Point _dragOrigin;
     private BarSettings _settings;
     private bool _settingsOpen;
+    private bool _hiddenForFullscreen;
     private bool _widthDragActive;
     private bool _initializing = true;
 
@@ -51,7 +53,6 @@ public partial class MainWindow : Window
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += (_, _) => RefreshBar();
         _refreshTimer.Start();
-
         // Explorer may recreate or re-show its taskbar when a fullscreen or
         // borderless game changes foreground state. Re-apply our hide state
         // while GlassBar owns the replacement taskbar.
@@ -61,6 +62,9 @@ public partial class MainWindow : Window
             if (_settings.HideNativeTaskbar) NativeTaskbar.EnsureHidden();
         };
         _taskbarGuardTimer.Start();
+        _fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _fullscreenTimer.Tick += (_, _) => UpdateFullscreenVisibility();
+        _fullscreenTimer.Start();
         RefreshBar();
         _initializing = false;
     }
@@ -70,6 +74,7 @@ public partial class MainWindow : Window
         PositionWindow();
         RenderStickers();
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide();
+        UpdateFullscreenVisibility();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -84,6 +89,7 @@ public partial class MainWindow : Window
     {
         _refreshTimer.Stop();
         _taskbarGuardTimer.Stop();
+        _fullscreenTimer.Stop();
         _startMenu?.Close();
         var handle = new WindowInteropHelper(this).Handle;
         if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
@@ -120,6 +126,27 @@ public partial class MainWindow : Window
         var latest = _windowService.GetOpenWindows().Take(visibleAppLimit);
         _apps.Clear();
         foreach (var app in latest) _apps.Add(app);
+    }
+
+    private void UpdateFullscreenVisibility()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == nint.Zero) return;
+
+        var shouldHide = FullscreenWindowDetector.IsForegroundFullscreen(handle);
+        if (shouldHide == _hiddenForFullscreen) return;
+        _hiddenForFullscreen = shouldHide;
+
+        if (shouldHide)
+        {
+            _startMenu?.Hide();
+            SetSettingsOpen(false);
+            Hide();
+            return;
+        }
+
+        ShowActivated = false;
+        Show();
     }
 
     private void ApplySettings()
