@@ -425,6 +425,12 @@
 
           <Grid Margin="0,19,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Use Windows search" FontWeight="SemiBold" /><TextBlock Text="Magnifier opens the original Windows Search" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="UseWindowsSearchCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                      Checked="UseWindowsSearchCheck_Changed" Unchecked="UseWindowsSearchCheck_Changed" AutomationProperties.AutomationId="UseWindowsSearch" />
+          </Grid>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="HideNativeCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideNativeCheck_Click" AutomationProperties.AutomationId="HideNativeTaskbar" />
           </Grid>

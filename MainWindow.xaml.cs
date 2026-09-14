@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
     private readonly DispatcherTimer _fullscreenTimer;
+    private readonly bool _keepVisibleForUiTests;
     private StartMenuWindow? _startMenu;
     private StickerConfig? _selectedSticker;
     private Border? _draggedSticker;
@@ -37,9 +38,10 @@ public partial class MainWindow : Window
     private bool _widthDragActive;
     private bool _initializing = true;
 
-    public MainWindow(bool safeMode = false)
+    public MainWindow(bool safeMode = false, bool keepVisibleForUiTests = false)
     {
         InitializeComponent();
+        _keepVisibleForUiTests = keepVisibleForUiTests;
         WidthSlider.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(WidthSlider_DragStarted));
         WidthSlider.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(WidthSlider_DragCompleted));
         _settings = _settingsService.Load();
@@ -132,6 +134,7 @@ public partial class MainWindow : Window
 
     private void UpdateFullscreenVisibility()
     {
+        if (_keepVisibleForUiTests) return;
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == nint.Zero) return;
 
@@ -173,6 +176,7 @@ public partial class MainWindow : Window
         CornerSlider.Value = _settings.CornerRadius;
         BarSurface.CornerRadius = new CornerRadius(_settings.CornerRadius);
         BarRow.Height = new GridLength(_settings.BarHeight);
+        UseWindowsSearchCheck.IsChecked = _settings.UseWindowsSearch;
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
         ApplyCustomEffectToControls();
@@ -191,7 +195,17 @@ public partial class MainWindow : Window
     private void SaveSettings() => _settingsService.Save(_settings);
 
     private void Start_Click(object sender, RoutedEventArgs e) => OpenStartMenu();
-    private void Search_Click(object sender, RoutedEventArgs e) => OpenStartMenu();
+    private void Search_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings.UseWindowsSearch)
+        {
+            _startMenu?.Hide();
+            SystemActions.Search();
+            return;
+        }
+
+        OpenStartMenu();
+    }
     private void TaskView_Click(object sender, RoutedEventArgs e) => SystemActions.TaskView();
     private void Explorer_Click(object sender, RoutedEventArgs e) => SystemActions.OpenExplorer();
     private void Terminal_Click(object sender, RoutedEventArgs e) => SystemActions.OpenTerminal();
@@ -241,6 +255,7 @@ public partial class MainWindow : Window
     {
         SetSettingsOpen(false);
         _startMenu ??= new StartMenuWindow();
+        _startMenu.ApplyAppearance(_settings);
         if (_startMenu.IsVisible) _startMenu.Hide(); else _startMenu.OpenNear(this);
     }
 
@@ -718,6 +733,13 @@ public partial class MainWindow : Window
     {
         _settings.HideNativeTaskbar = HideNativeCheck.IsChecked == true;
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide(); else NativeTaskbar.Show();
+        SaveSettings();
+    }
+
+    private void UseWindowsSearchCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        _settings.UseWindowsSearch = UseWindowsSearchCheck.IsChecked == true;
         SaveSettings();
     }
 

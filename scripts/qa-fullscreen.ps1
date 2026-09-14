@@ -78,7 +78,14 @@ try {
     $hiddenForFullscreen = -not (Test-GlassBarVisible -processId $process.Id)
     Stop-Process -Id $probe.Id -Force
     $probe = $null
-    Start-Sleep -Seconds 2
+    Start-Sleep -Milliseconds 500
+
+    # Return focus to a known non-fullscreen window. Otherwise an unrelated
+    # fullscreen game or video behind the probe can immediately keep GlassBar hidden.
+    $probe = Start-Probe 'Maximized'
+    Start-Sleep -Seconds 1
+    [Microsoft.VisualBasic.Interaction]::AppActivate($probe.Id) | Out-Null
+    Start-Sleep -Seconds 1
 
     $restoredAfterFullscreen = Test-GlassBarVisible -processId $process.Id -timeoutMilliseconds 5000
     $result = [pscustomobject]@{

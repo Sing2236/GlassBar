@@ -37,7 +37,8 @@ public partial class App : Application
         base.OnStartup(e);
         StartWatchdog();
         var safeMode = e.Args.Contains("--safe", StringComparer.OrdinalIgnoreCase);
-        new MainWindow(safeMode).Show();
+        var keepVisibleForUiTests = e.Args.Contains("--qa-visible", StringComparer.OrdinalIgnoreCase);
+        new MainWindow(safeMode, keepVisibleForUiTests).Show();
         if (!safeMode) StartAutomaticUpdates();
     }
 

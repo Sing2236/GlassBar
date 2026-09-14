@@ -56,6 +56,7 @@ New-Item -ItemType Directory -Path $settingsFolder -Force | Out-Null
 $qaSettings = [ordered]@{
     HideNativeTaskbar = $false
     StartWithWindows = $false
+    UseWindowsSearch = $false
     Opacity = 0.82
     EffectIntensity = 0.72
     Effect = 'Rain'
@@ -136,7 +137,7 @@ function Capture-Element($element, [string]$name) {
     }
 }
 
-$process = Start-Process -FilePath $executable -ArgumentList '--safe' -PassThru
+$process = Start-Process -FilePath $executable -ArgumentList @('--safe', '--qa-visible') -PassThru
 try {
     Start-Sleep -Seconds 2
     $main = Find-Element 'GlassBarMainWindow' $process.Id
@@ -145,6 +146,10 @@ try {
     Invoke-Element (Find-Element 'StartButton' $process.Id)
     $menu = Find-Element 'GlassBarStartMenu' $process.Id
     $menuScreenshot = Capture-Element $menu 'custom-start-menu.png'
+    Start-Sleep -Milliseconds 450
+    $menuAnimatedScreenshot = Capture-Element $menu 'custom-start-menu-animated.png'
+    $startMenuEffectAnimated = (Get-FileHash $menuScreenshot -Algorithm SHA256).Hash -ne
+        (Get-FileHash $menuAnimatedScreenshot -Algorithm SHA256).Hash
 
     $search = Find-Element 'StartMenuSearch' $process.Id
     $valuePattern = $search.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
@@ -159,6 +164,14 @@ try {
     Start-Sleep -Milliseconds 500
     $main = Find-Element 'GlassBarMainWindow' $process.Id
     $designerScreenshot = Capture-Element $main 'customizer.png'
+
+    $windowsSearchToggle = Find-Element 'UseWindowsSearch' $process.Id
+    $windowsSearchTogglePattern = $windowsSearchToggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+    $windowsSearchTogglePattern.Toggle()
+    Start-Sleep -Milliseconds 180
+    $windowsSearchPreferenceSaved = ([IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json).UseWindowsSearch -eq $true
+    $windowsSearchTogglePattern.Toggle()
+    Start-Sleep -Milliseconds 180
 
     Invoke-Element (Find-Element 'EffectAurora' $process.Id)
     Start-Sleep -Milliseconds 180
@@ -251,7 +264,7 @@ try {
     Get-Process GlassBar -ErrorAction SilentlyContinue |
         Where-Object Path -EQ $executable |
         Stop-Process -Force
-    $process = Start-Process -FilePath $executable -ArgumentList '--safe' -PassThru
+    $process = Start-Process -FilePath $executable -ArgumentList @('--safe', '--qa-visible') -PassThru
     Start-Sleep -Seconds 2
     $restartMain = Find-Element 'GlassBarMainWindow' $process.Id
     Invoke-Element (Find-Element 'SettingsButton' $process.Id)
@@ -269,6 +282,8 @@ try {
     [pscustomobject]@{
         AppResponsive = $process.Responding
         CustomMenuOpened = $customMenuOpened
+        StartMenuEffectAnimated = $startMenuEffectAnimated
+        WindowsSearchPreferenceSaved = $windowsSearchPreferenceSaved
         SearchValue = $searchValue
         DesignerOpened = $designerOpened
         RainIsFree = $rainIsFree

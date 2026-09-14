@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using GlassBar.Models;
 using GlassBar.Services;
 
@@ -30,6 +32,7 @@ public partial class StartMenuWindow : Window
         Show();
         Activate();
         SearchBox.Focus();
+        PlayOpenAnimation();
 
         if (!_loadedAllApps)
         {
@@ -38,6 +41,36 @@ public partial class StartMenuWindow : Window
             _loadedAllApps = true;
             ApplyFilter();
         }
+    }
+
+    private void PlayOpenAnimation()
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        MenuSurface.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease });
+        MenuScale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.965, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+        MenuScale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.965, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+
+        var contentDelay = TimeSpan.FromMilliseconds(45);
+        MenuContent.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190)) { BeginTime = contentDelay, EasingFunction = ease });
+        MenuContentOffset.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(240)) { BeginTime = contentDelay, EasingFunction = ease });
+        MenuEffectsLayer.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 0.62, TimeSpan.FromMilliseconds(360))
+            { BeginTime = TimeSpan.FromMilliseconds(70), EasingFunction = ease });
+    }
+
+    public void ApplyAppearance(BarSettings settings)
+    {
+        MenuEffectsLayer.Mode = settings.Effect;
+        MenuEffectsLayer.Intensity = Math.Clamp(settings.EffectIntensity * 0.82, 0.05, 0.82);
+        MenuEffectsLayer.CustomEffect = settings.CustomEffect;
+        if (ColorConverter.ConvertFromString(settings.Accent) is Color accent)
+            MenuEffectsLayer.Accent = accent;
+        MenuEffectsLayer.RefreshCustomEffect(settings.Effect == "Custom");
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
