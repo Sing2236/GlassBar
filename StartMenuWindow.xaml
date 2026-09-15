@@ -30,6 +30,30 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <Style x:Key="SearchResultItem" TargetType="ListBoxItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="#F8FAFC" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+      <Setter Property="AutomationProperties.HelpText" Value="{Binding IconState}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="ResultSurface" Background="{TemplateBinding Background}" CornerRadius="12" Padding="10,7">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="#18FFFFFF" /></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="#2A7DD3FC" /></Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ResultSurface" Property="BorderBrush" Value="#707DD3FC" /><Setter TargetName="ResultSurface" Property="BorderThickness" Value="1" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Border x:Name="MenuSurface" Margin="14" CornerRadius="26" Background="#E6111722" BorderBrush="#35FFFFFF" BorderThickness="1"
@@ -59,7 +83,7 @@
                      Foreground="#F8FAFC" CaretBrush="#7DD3FC" FontSize="16" VerticalContentAlignment="Center"
                      Padding="0,0,12,0" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown"
                      AutomationProperties.AutomationId="StartMenuSearch" />
-            <TextBlock x:Name="SearchHint" Grid.Column="1" Text="Search apps" Foreground="#718196" FontSize="16"
+            <TextBlock x:Name="SearchHint" Grid.Column="1" Text="Search apps, settings, files, and the web" Foreground="#718196" FontSize="16"
                        VerticalAlignment="Center" IsHitTestVisible="False" />
           </Grid>
         </Border>
@@ -71,36 +95,42 @@
       </DockPanel>
 
       <Grid Grid.Row="2">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl x:Name="AppResults" AutomationProperties.AutomationId="StartMenuResults">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Button Width="142" Height="82" Margin="2" Style="{StaticResource MenuAction}" Click="App_Click" ToolTip="{Binding Name}">
-                  <StackPanel>
-                    <Grid Width="34" Height="34" HorizontalAlignment="Center">
-                      <Border x:Name="FallbackIcon" CornerRadius="10" Background="#1FFFFFFF" Visibility="Collapsed">
-                        <TextBlock Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AFC5D8" />
-                      </Border>
-                      <Image x:Name="AppIcon" Source="{Binding Icon}" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
-                    </Grid>
-                    <TextBlock Text="{Binding Name}" FontSize="12" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"
-                               MaxWidth="122" HorizontalAlignment="Center" />
-                  </StackPanel>
-                </Button>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="AppIcon" Property="Visibility" Value="Collapsed" /></DataTrigger>
-                  <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" /></DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+        <ListBox x:Name="AppResults" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC"
+                 ItemContainerStyle="{StaticResource SearchResultItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 PreviewMouseLeftButtonUp="AppResults_PreviewMouseLeftButtonUp"
+                 AutomationProperties.AutomationId="StartMenuResults">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid Height="48" AutomationProperties.Name="{Binding Name}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="42" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="34" Height="34" VerticalAlignment="Center">
+                  <Border x:Name="FallbackIcon" CornerRadius="9" Background="#1FFFFFFF" Visibility="Collapsed">
+                    <TextBlock Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AFC5D8" />
+                  </Border>
+                  <Image x:Name="AppIcon" Source="{Binding Icon}" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,12,0">
+                  <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource MenuMuted}" FontSize="10" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Border Grid.Column="2" Background="#18FFFFFF" CornerRadius="8" Padding="8,4" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Kind}" Foreground="#AFC5D8" FontSize="9" FontWeight="SemiBold" />
+                </Border>
+              </Grid>
+              <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="AppIcon" Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" /></DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
         <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
           <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="#64748B" HorizontalAlignment="Center" />
-          <TextBlock Text="No matching apps" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,0" />
+          <TextBlock Text="No matching results" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,0" />
           <TextBlock Text="Try a shorter search" Foreground="{StaticResource MenuMuted}" Margin="0,4,0,0" />
         </StackPanel>
       </Grid>

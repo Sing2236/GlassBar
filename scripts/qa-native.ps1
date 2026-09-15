@@ -39,6 +39,9 @@ public static class NativeMouse {
 
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $executable = Join-Path $projectRoot 'bin\Release\net8.0-windows\GlassBar.exe'
+$installedExecutable = Join-Path $env:LOCALAPPDATA 'Programs\GlassBar\GlassBar.exe'
+$installedWasRunning = @(Get-Process GlassBar -ErrorAction SilentlyContinue |
+    Where-Object Path -EQ $installedExecutable).Count -gt 0
 $evidenceDir = Join-Path $projectRoot '.gstack\qa-reports\screenshots'
 $settingsFolder = Join-Path $env:LOCALAPPDATA 'GlassBar'
 $settingsPath = Join-Path $settingsFolder 'settings.json'
@@ -101,6 +104,28 @@ function Find-Element([string]$automationId, [int]$processId, [int]$timeoutSecon
     throw "UI element '$automationId' did not appear within $timeoutSeconds seconds."
 }
 
+function Wait-SelectedResult([string]$expectedName, [int]$processId, [bool]$requireIcon = $false, [int]$timeoutSeconds = 8) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($timeoutSeconds)
+    $results = Find-Element 'StartMenuResults' $processId $timeoutSeconds
+    $selectionPattern = $results.GetCurrentPattern([System.Windows.Automation.SelectionPattern]::Pattern)
+
+    do {
+        $selection = @($selectionPattern.Current.GetSelection())
+        if ($selection.Count -gt 0) {
+            $selectedName = $selection[0].Current.Name
+            if ([string]$selectedName -like "*$expectedName*") {
+                if ($requireIcon -and $selection[0].Current.HelpText -ne 'Windows icon') {
+                    throw "'$expectedName' rendered GlassBar's fallback glyph instead of its Windows app icon."
+                }
+                return $true
+            }
+        }
+        Start-Sleep -Milliseconds 150
+    } while ([DateTime]::UtcNow -lt $deadline)
+
+    throw "'$expectedName' was not selected as the best search result within $timeoutSeconds seconds."
+}
+
 function Invoke-Element($element) {
     $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
     $pattern.Invoke()
@@ -137,6 +162,13 @@ function Capture-Element($element, [string]$name) {
     }
 }
 
+$process = $null
+if ($installedWasRunning) {
+    Get-Process GlassBar -ErrorAction SilentlyContinue |
+        Where-Object Path -EQ $installedExecutable |
+        Stop-Process -Force
+    Start-Sleep -Seconds 2
+}
 $process = Start-Process -FilePath $executable -ArgumentList @('--safe', '--qa-visible') -PassThru
 try {
     Start-Sleep -Seconds 2
@@ -152,10 +184,16 @@ try {
         (Get-FileHash $menuAnimatedScreenshot -Algorithm SHA256).Hash
 
     $search = Find-Element 'StartMenuSearch' $process.Id
+    $search.SetFocus()
     $valuePattern = $search.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
     $valuePattern.SetValue('Visual Studio Code')
     Start-Sleep -Milliseconds 500
     $searchValue = $valuePattern.Current.Value
+    $valuePattern.SetValue('Calculator')
+    $calculatorSearchFound = Wait-SelectedResult 'Calculator' $process.Id $true
+    $calculatorScreenshot = Capture-Element $menu 'calculator-search.png'
+    $valuePattern.SetValue('Bluetooth')
+    $settingsSearchFound = Wait-SelectedResult 'Bluetooth & devices' $process.Id
 
     Invoke-Element (Find-Element 'SettingsButton' $process.Id)
     $widthSlider = Find-Element 'WidthSlider' $process.Id
@@ -285,6 +323,9 @@ try {
         StartMenuEffectAnimated = $startMenuEffectAnimated
         WindowsSearchPreferenceSaved = $windowsSearchPreferenceSaved
         SearchValue = $searchValue
+        CalculatorSearchFound = $calculatorSearchFound
+        CalculatorScreenshot = $calculatorScreenshot
+        SettingsSearchFound = $settingsSearchFound
         DesignerOpened = $designerOpened
         RainIsFree = $rainIsFree
         AuroraIsFree = $auroraIsFree
@@ -310,10 +351,13 @@ try {
     } | Format-List
 }
 finally {
-    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+    if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force }
     Start-Sleep -Milliseconds 700
     if ($hadSettings) { [IO.File]::WriteAllText($settingsPath, $settingsBackup) }
     elseif (Test-Path -LiteralPath $settingsPath) { Remove-Item -LiteralPath $settingsPath -Force }
     if ($hadLicense) { [IO.File]::WriteAllText($licensePath, $licenseBackup) }
     elseif (Test-Path -LiteralPath $licensePath) { Remove-Item -LiteralPath $licensePath -Force }
+    if ($installedWasRunning -and (Test-Path -LiteralPath $installedExecutable)) {
+        Start-Process -FilePath $installedExecutable | Out-Null
+    }
 }
