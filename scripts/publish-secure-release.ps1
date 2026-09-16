@@ -28,6 +28,7 @@ if ($existingTags -contains $tag) { throw "Release $tag already exists." }
 
 $artifactRoot = Join-Path $projectRoot "artifacts\release-$Version"
 $publishDirectory = Join-Path $artifactRoot 'app'
+$publishedExecutable = Join-Path $publishDirectory 'GlassBar.exe'
 $manifestPath = Join-Path $artifactRoot 'update.json'
 $installerPath = Join-Path $projectRoot 'installer\output\GlassBarSetup.exe'
 $installerUrl = "https://github.com/$Repository/releases/download/$tag/GlassBarSetup.exe"
@@ -55,7 +56,13 @@ New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null
     -o $publishDirectory
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 
-& $compiler "/DMyAppVersion=$Version" (Join-Path $projectRoot 'installer\GlassBar.iss')
+$publishedVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($publishedExecutable).FileVersion
+if (-not $publishedVersion.StartsWith("$Version.", [StringComparison]::Ordinal)) {
+    throw "Published executable version $publishedVersion does not match $Version."
+}
+
+& $compiler "/DMyAppVersion=$Version" "/DMyAppSourceDir=$publishDirectory" `
+    (Join-Path $projectRoot 'installer\GlassBar.iss')
 if ($LASTEXITCODE -ne 0) { throw 'The installer build failed.' }
 
 $installerSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $installerPath).Hash.ToLowerInvariant()
@@ -78,7 +85,7 @@ Secure update release built from commit $commit.
 
 & gh release create $tag `
     $installerPath `
-    (Join-Path $publishDirectory 'GlassBar.exe') `
+    $publishedExecutable `
     $manifestPath `
     --repo $Repository `
     --target $commit `
