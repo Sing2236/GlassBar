@@ -723,6 +723,14 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
+    private void FocusDuration_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string value } || !int.TryParse(value, out var minutes)) return;
+        _settings.TopFocusMinutes = Math.Clamp(minutes, 1, 180);
+        _topOverlay?.ApplyConfiguration(_settings, fitToWidgets: false);
+        SaveSettings();
+    }
+
     private void ApplyTopOverlayState()
     {
         if (_settings.TopOverlayEnabled)
