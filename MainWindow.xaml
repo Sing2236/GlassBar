@@ -391,6 +391,28 @@
 
           <Grid Margin="0,19,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Top widget bar" FontWeight="SemiBold" /><TextBlock Text="Clock, performance, connection, power and focus" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="TopOverlayCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="TopOverlayCheck_Click" AutomationProperties.AutomationId="TopOverlayEnabled" />
+          </Grid>
+          <Border x:Name="TopOverlayOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="TOP BAR WIDGETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
+
+              <TextBlock Text="TOP BAR GIFS" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <TextBlock Text="Separate stickers for the optional top bar" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="10" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddTopSticker_Click" AutomationProperties.AutomationId="AddTopSticker" /><Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearTopStickers_Click" AutomationProperties.AutomationId="ClearTopStickers" /></StackPanel>
+              <ListBox x:Name="TopStickerPicker" Margin="0,4,0,0" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="TopStickerPicker_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="TopStickerPicker"><ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" /></DataTemplate></ListBox.ItemTemplate></ListBox>
+              <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="20" Maximum="70" ValueChanged="TopStickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="TopStickerSizeSlider" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="TopStickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="TopStickerOpacitySlider" /></Grid>
+            </StackPanel>
+          </Border>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="HideNativeCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideNativeCheck_Click" AutomationProperties.AutomationId="HideNativeTaskbar" />
           </Grid>
@@ -406,6 +428,68 @@
           </DockPanel>
         </StackPanel>
       </ScrollViewer>
+    </Border>
+
+    <Border x:Name="BackgroundProcessesPanel" Grid.Row="0" Width="342" Height="312"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,12" Padding="14"
+            Visibility="Collapsed" CornerRadius="18" Background="#F2111722"
+            BorderBrush="#30FFFFFF" BorderThickness="1"
+            AutomationProperties.AutomationId="BackgroundProcessesPanel">
+      <Border.Effect><DropShadowEffect BlurRadius="26" Opacity="0.46" ShadowDepth="7" Color="#020617" /></Border.Effect>
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <DockPanel Margin="2,0,2,10">
+          <Button DockPanel.Dock="Right" Style="{StaticResource TinyButton}" Width="28" MinWidth="28" Height="28" Padding="0"
+                  Click="RefreshBackgroundProcesses_Click" ToolTip="Refresh" AutomationProperties.AutomationId="RefreshBackgroundProcesses">
+            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="12" />
+          </Button>
+          <StackPanel>
+            <TextBlock Text="Background activity" FontSize="15" FontWeight="SemiBold" />
+            <TextBlock x:Name="BackgroundProcessCountText" Text="Loading…" Foreground="{StaticResource MutedText}" FontSize="10" />
+          </StackPanel>
+        </DockPanel>
+        <ListBox x:Name="BackgroundProcessesList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.AutomationId="BackgroundProcessesList">
+          <ListBox.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource GlassScrollBar}" />
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Focusable" Value="False" />
+              <Setter Property="Margin" Value="0,0,0,4" />
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ListBoxItem">
+                    <Border Background="#0BFFFFFF" CornerRadius="10" Padding="9,6">
+                      <ContentPresenter />
+                    </Border>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </ListBox.Resources>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid Height="34">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Grid Width="22" Height="22" VerticalAlignment="Center">
+                  <Border Background="#18FFFFFF" CornerRadius="6" />
+                  <TextBlock x:Name="ProcessFallback" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" />
+                  <Image Source="{Binding Icon}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Detail}" Foreground="{StaticResource MutedText}" FontSize="9" />
+                </StackPanel>
+              </Grid>
+              <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="ProcessFallback" Property="Visibility" Value="Visible" /></DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Grid.Row="2" Margin="2,8,2,0" Text="Grouped by app  ·  highest memory first"
+                   Foreground="#72849A" FontSize="9" />
+      </Grid>
     </Border>
 
     <Border x:Name="BarSurface" Grid.Row="1" Margin="4,0,4,4" CornerRadius="22"
@@ -469,6 +553,11 @@
           </StackPanel>
 
           <StackPanel Grid.Column="3" Orientation="Horizontal">
+            <Button Style="{StaticResource TinyButton}" Width="28" MinWidth="28" Height="28" Padding="0"
+                    Click="BackgroundProcesses_Click" ToolTip="Background processes" AutomationProperties.AutomationId="BackgroundProcessesButton">
+              <Path Width="11" Height="7" Stretch="Fill" Stroke="#E8EEF7" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                    Data="M 1,6 L 5.5,1.5 L 10,6" />
+            </Button>
             <Button Style="{StaticResource TinyButton}" Click="QuickSettings_Click" ToolTip="Quick settings" FontFamily="Segoe MDL2 Assets" Content="&#xE9CE;" />
             <Button Style="{StaticResource TinyButton}" Click="QuickSettings_Click" ToolTip="Volume and network" FontFamily="Segoe MDL2 Assets" Content="&#xE767;" />
             <Button Style="{StaticResource BarButton}" Click="Clock_Click" ToolTip="Calendar and notifications" Padding="9,3">

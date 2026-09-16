@@ -27,7 +27,8 @@ public sealed class SettingsService
         settings.StartWithWindows = IsStartWithWindows();
         settings.CustomEffect ??= new CustomEffectConfig();
         settings.Stickers ??= [];
-        foreach (var sticker in settings.Stickers)
+        settings.TopStickers ??= [];
+        foreach (var sticker in settings.Stickers.Concat(settings.TopStickers))
             if (string.IsNullOrWhiteSpace(sticker.DisplayName) || sticker.DisplayName == "Sticker")
                 sticker.DisplayName = Path.GetFileNameWithoutExtension(sticker.FilePath);
         return settings;

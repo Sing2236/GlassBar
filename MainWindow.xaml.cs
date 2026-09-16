@@ -21,15 +21,19 @@ public partial class MainWindow : Window
     private readonly WindowService _windowService = new();
     private readonly SettingsService _settingsService = new();
     private readonly ObservableCollection<AppItem> _apps = [];
+    private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
     private StartMenuWindow? _startMenu;
+    private TopOverlayWindow? _topOverlay;
     private StickerConfig? _selectedSticker;
+    private StickerConfig? _selectedTopSticker;
     private Border? _draggedSticker;
     private Point _dragStart;
     private Point _dragOrigin;
     private BarSettings _settings;
     private bool _settingsOpen;
+    private bool _backgroundProcessesOpen;
     private bool _widthDragActive;
     private bool _initializing = true;
 
@@ -41,9 +45,11 @@ public partial class MainWindow : Window
         _settings = _settingsService.Load();
         if (safeMode) _settings.HideNativeTaskbar = false;
         RunningApps.ItemsSource = _apps;
+        BackgroundProcessesList.ItemsSource = _backgroundProcesses;
         ApplySettings();
 
         Loaded += OnLoaded;
+        Deactivated += OnDeactivated;
         BarSurface.SizeChanged += (_, _) => PositionStickers();
         Closed += OnClosed;
         SourceInitialized += OnSourceInitialized;
@@ -69,7 +75,14 @@ public partial class MainWindow : Window
     {
         PositionWindow();
         RenderStickers();
+        ApplyTopOverlayState();
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide();
+    }
+
+    private void OnDeactivated(object? sender, EventArgs e)
+    {
+        if (_settingsOpen) SetSettingsOpen(false);
+        if (_backgroundProcessesOpen) SetBackgroundProcessesOpen(false);
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -85,6 +98,7 @@ public partial class MainWindow : Window
         _refreshTimer.Stop();
         _taskbarGuardTimer.Stop();
         _startMenu?.Close();
+        _topOverlay?.Close();
         var handle = new WindowInteropHelper(this).Handle;
         if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
         NativeTaskbar.Show();
@@ -108,6 +122,16 @@ public partial class MainWindow : Window
         BarRow.Height = new GridLength(_settings.BarHeight);
         Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
         Top = SystemParameters.PrimaryScreenHeight - Height - 8;
+    }
+
+    private void UpdateWindowHeight()
+    {
+        Height = _settingsOpen
+            ? Math.Min(690, SystemParameters.PrimaryScreenHeight - 18)
+            : _backgroundProcessesOpen
+                ? Math.Min(_settings.BarHeight + 334, SystemParameters.PrimaryScreenHeight - 18)
+                : _settings.BarHeight + 10;
+        PositionWindow();
     }
 
     private void RefreshBar()
@@ -144,6 +168,18 @@ public partial class MainWindow : Window
         BarRow.Height = new GridLength(_settings.BarHeight);
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
+        TopOverlayCheck.IsChecked = _settings.TopOverlayEnabled;
+        TopClockCheck.IsChecked = _settings.TopShowClock;
+        TopPerformanceCheck.IsChecked = _settings.TopShowPerformance;
+        TopConnectionCheck.IsChecked = _settings.TopShowConnection;
+        TopPowerCheck.IsChecked = _settings.TopShowPower;
+        TopFocusCheck.IsChecked = _settings.TopShowFocus;
+        TopOverlayOptionsPanel.Visibility = _settings.TopOverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
+        _selectedTopSticker ??= _settings.TopStickers.FirstOrDefault();
+        RefreshTopStickerPicker();
+        if (_selectedTopSticker is not null) SetTopStickerSliders(_selectedTopSticker);
+        TopStickerSizeSlider.IsEnabled = _settings.TopStickers.Count > 0;
+        TopStickerOpacitySlider.IsEnabled = _settings.TopStickers.Count > 0;
         ApplyCustomEffectToControls();
         CustomEffectPanel.Visibility = _settings.Effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         _selectedSticker ??= _settings.Stickers.FirstOrDefault();
@@ -163,6 +199,36 @@ public partial class MainWindow : Window
     private void QuickSettings_Click(object sender, RoutedEventArgs e) => SystemActions.QuickSettings();
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemActions.Notifications();
 
+    private void BackgroundProcesses_Click(object sender, RoutedEventArgs e)
+    {
+        if (_backgroundProcessesOpen)
+        {
+            SetBackgroundProcessesOpen(false);
+            return;
+        }
+        SetSettingsOpen(false);
+        _startMenu?.Hide();
+        SetBackgroundProcessesOpen(true);
+    }
+
+    private void RefreshBackgroundProcesses_Click(object sender, RoutedEventArgs e) => RefreshBackgroundProcesses();
+
+    private void SetBackgroundProcessesOpen(bool open)
+    {
+        _backgroundProcessesOpen = open;
+        BackgroundProcessesPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        if (open) RefreshBackgroundProcesses();
+        UpdateWindowHeight();
+    }
+
+    private void RefreshBackgroundProcesses()
+    {
+        var items = _windowService.GetBackgroundProcesses();
+        _backgroundProcesses.Clear();
+        foreach (var item in items) _backgroundProcesses.Add(item);
+        BackgroundProcessCountText.Text = items.Count == 1 ? "1 active app" : $"{items.Count} active apps";
+    }
+
     private void RunningApp_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { DataContext: AppItem app }) _windowService.Activate(app);
@@ -173,9 +239,11 @@ public partial class MainWindow : Window
 
     private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!_settingsOpen || e.OriginalSource is not DependencyObject source) return;
-        if (IsWithin(source, SettingsPanel) || IsWithin(source, BarSurface)) return;
-        SetSettingsOpen(false);
+        if (e.OriginalSource is not DependencyObject source) return;
+        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, BarSurface))
+            SetSettingsOpen(false);
+        if (_backgroundProcessesOpen && !IsWithin(source, BackgroundProcessesPanel) && !IsWithin(source, BarSurface))
+            SetBackgroundProcessesOpen(false);
     }
 
     private static bool IsWithin(DependencyObject source, DependencyObject container)
@@ -194,17 +262,22 @@ public partial class MainWindow : Window
     private void SetSettingsOpen(bool open)
     {
         if (open) _startMenu?.Hide();
+        if (open && _backgroundProcessesOpen)
+        {
+            _backgroundProcessesOpen = false;
+            BackgroundProcessesPanel.Visibility = Visibility.Collapsed;
+        }
         _settingsOpen = open;
         SettingsPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         StickerCanvas.IsHitTestVisible = open;
-        Height = open ? Math.Min(690, SystemParameters.PrimaryScreenHeight - 18) : _settings.BarHeight + 10;
-        PositionWindow();
+        UpdateWindowHeight();
         RenderStickers();
     }
 
     private void OpenStartMenu()
     {
         SetSettingsOpen(false);
+        SetBackgroundProcessesOpen(false);
         _startMenu ??= new StartMenuWindow();
         if (_startMenu.IsVisible) _startMenu.Hide(); else _startMenu.OpenNear(this);
     }
@@ -215,6 +288,7 @@ public partial class MainWindow : Window
         _settings.Effect = effect;
         EffectsLayer.Mode = effect;
         CustomEffectPanel.Visibility = effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();
     }
 
@@ -238,6 +312,7 @@ public partial class MainWindow : Window
         EffectsLayer.CustomEffect = _settings.CustomEffect;
         EffectsLayer.Mode = "Custom";
         EffectsLayer.RefreshCustomEffect(rebuildParticles);
+        _topOverlay?.ApplyAppearance(_settings);
         CustomEffectPanel.Visibility = Visibility.Visible;
         CustomEffectSummary.Text = $"{_settings.CustomEffect.Shape} · {_settings.CustomEffect.Motion}";
         SaveSettings();
@@ -375,6 +450,7 @@ public partial class MainWindow : Window
         if (Resources["GlassBackground"] is SolidColorBrush glass) glass.Opacity = e.NewValue;
         if (_initializing) return;
         _settings.Opacity = e.NewValue;
+        _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();
     }
 
@@ -418,8 +494,7 @@ public partial class MainWindow : Window
         if (_initializing) return;
         _settings.BarHeight = e.NewValue;
         BarRow.Height = new GridLength(e.NewValue);
-        if (!_settingsOpen) Height = e.NewValue + 10;
-        PositionWindow();
+        UpdateWindowHeight();
         SaveSettings();
     }
 
@@ -438,6 +513,7 @@ public partial class MainWindow : Window
         _settings.Accent = value;
         Resources["AccentBrush"] = new SolidColorBrush(accent);
         EffectsLayer.Accent = accent;
+        _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();
     }
 
@@ -621,6 +697,125 @@ public partial class MainWindow : Window
     {
         _settings.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
         _settingsService.SetStartWithWindows(_settings.StartWithWindows);
+        SaveSettings();
+    }
+
+    private void TopOverlayCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.TopOverlayEnabled = TopOverlayCheck.IsChecked == true;
+        TopOverlayOptionsPanel.Visibility = _settings.TopOverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
+        ApplyTopOverlayState();
+        SaveSettings();
+    }
+
+    private void TopWidgetCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { Tag: string widget }) return;
+        switch (widget)
+        {
+            case "Clock": _settings.TopShowClock = TopClockCheck.IsChecked == true; break;
+            case "Performance": _settings.TopShowPerformance = TopPerformanceCheck.IsChecked == true; break;
+            case "Connection": _settings.TopShowConnection = TopConnectionCheck.IsChecked == true; break;
+            case "Power": _settings.TopShowPower = TopPowerCheck.IsChecked == true; break;
+            case "Focus": _settings.TopShowFocus = TopFocusCheck.IsChecked == true; break;
+        }
+        _topOverlay?.ApplyConfiguration(_settings);
+        SaveSettings();
+    }
+
+    private void ApplyTopOverlayState()
+    {
+        if (_settings.TopOverlayEnabled)
+        {
+            if (_topOverlay is null)
+            {
+                _topOverlay = new TopOverlayWindow(_settings);
+                _topOverlay.Closed += (_, _) => _topOverlay = null;
+                _topOverlay.Show();
+            }
+            else
+            {
+                _topOverlay.ApplyConfiguration(_settings);
+            }
+            return;
+        }
+
+        _topOverlay?.Close();
+        _topOverlay = null;
+    }
+
+    private void AddTopSticker_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Choose a top bar GIF", Filter = "GIF images (*.gif)|*.gif", Multiselect = false };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var sticker = new StickerConfig { FilePath = StickerService.Import(dialog.FileName), DisplayName = Path.GetFileNameWithoutExtension(dialog.FileName), X = 0.88, Y = 0.05, Size = 42 };
+            _settings.TopStickers.Add(sticker);
+            _selectedTopSticker = sticker;
+            RefreshTopStickerPicker();
+            SetTopStickerSliders(sticker);
+            TopStickerSizeSlider.IsEnabled = TopStickerOpacitySlider.IsEnabled = true;
+            _topOverlay?.ApplyConfiguration(_settings);
+            SaveSettings();
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, $"GlassBar could not add that top bar GIF.\n\n{exception.Message}", "Top GIF import failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ClearTopStickers_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.TopStickers.Clear();
+        _selectedTopSticker = null;
+        RefreshTopStickerPicker();
+        TopStickerSizeSlider.IsEnabled = TopStickerOpacitySlider.IsEnabled = false;
+        _topOverlay?.ApplyConfiguration(_settings);
+        SaveSettings();
+    }
+
+    private void TopStickerPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_initializing || TopStickerPicker.SelectedItem is not StickerConfig sticker) return;
+        _selectedTopSticker = sticker;
+        SetTopStickerSliders(sticker);
+    }
+
+    private void RefreshTopStickerPicker()
+    {
+        if (TopStickerPicker is null) return;
+        var previous = _initializing;
+        _initializing = true;
+        TopStickerPicker.ItemsSource = null;
+        TopStickerPicker.ItemsSource = _settings.TopStickers;
+        TopStickerPicker.SelectedItem = _selectedTopSticker;
+        TopStickerPicker.Visibility = _settings.TopStickers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _initializing = previous;
+    }
+
+    private void SetTopStickerSliders(StickerConfig sticker)
+    {
+        var previous = _initializing;
+        _initializing = true;
+        TopStickerSizeSlider.Value = sticker.Size;
+        TopStickerOpacitySlider.Value = sticker.Opacity;
+        _initializing = previous;
+    }
+
+    private void TopStickerSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _selectedTopSticker is null) return;
+        _selectedTopSticker.Size = e.NewValue;
+        _topOverlay?.ApplyConfiguration(_settings);
+        SaveSettings();
+    }
+
+    private void TopStickerOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || _selectedTopSticker is null) return;
+        _selectedTopSticker.Opacity = e.NewValue;
+        _topOverlay?.ApplyConfiguration(_settings);
         SaveSettings();
     }
 

@@ -29,6 +29,7 @@ internal static class NativeMethods
     internal const uint KEYEVENTF_KEYUP = 0x0002;
     internal const uint SHGFI_ICON = 0x000000100;
     internal const uint SHGFI_SMALLICON = 0x000000001;
+    internal const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
     internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
@@ -48,6 +49,15 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern nint OpenProcess(uint desiredAccess, bool inheritHandle, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern bool QueryFullProcessImageName(nint process, int flags, StringBuilder executableName, ref int size);
+
+    [DllImport("kernel32.dll")]
+    internal static extern bool CloseHandle(nint handle);
 
     [DllImport("user32.dll")]
     internal static extern nint GetShellWindow();

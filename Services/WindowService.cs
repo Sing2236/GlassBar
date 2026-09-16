@@ -10,6 +10,48 @@ namespace GlassBar.Services;
 
 public sealed class WindowService
 {
+    public IReadOnlyList<BackgroundProcessItem> GetBackgroundProcesses()
+    {
+        var ownPid = Environment.ProcessId;
+        var ownSession = Process.GetCurrentProcess().SessionId;
+        var processes = new List<(string Name, long Memory, string? Path)>();
+
+        foreach (var process in Process.GetProcesses())
+        {
+            using (process)
+            {
+                try
+                {
+                    if (process.Id == ownPid || process.SessionId != ownSession || process.MainWindowHandle != nint.Zero)
+                        continue;
+                    if (process.ProcessName is "Idle" or "System" or "Registry" or "Memory Compression")
+                        continue;
+
+                    processes.Add((process.ProcessName, process.WorkingSet64, TryGetProcessPath(process.Id)));
+                }
+                catch { }
+            }
+        }
+
+        return processes
+            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new
+            {
+                Name = group.Key,
+                Count = group.Count(),
+                Memory = group.Sum(item => item.Memory),
+                Path = group.Select(item => item.Path).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+            })
+            .OrderByDescending(item => item.Memory)
+            .Select(item => new BackgroundProcessItem
+            {
+                Name = FormatProcessName(item.Name),
+                Detail = $"{(item.Count > 1 ? $"{item.Count} processes · " : string.Empty)}{FormatMemory(item.Memory)}",
+                Icon = string.IsNullOrWhiteSpace(item.Path) ? null : ShellIconService.GetIcon(item.Path)
+            })
+            .ToList();
+    }
+
     public IReadOnlyList<AppItem> GetOpenWindows()
     {
         var windows = new List<AppItem>();
@@ -54,6 +96,26 @@ public sealed class WindowService
     {
         if (NativeMethods.IsIconic(item.Handle)) NativeMethods.ShowWindow(item.Handle, NativeMethods.SW_RESTORE);
         NativeMethods.SetForegroundWindow(item.Handle);
+    }
+
+    private static string FormatProcessName(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "Background process" : char.ToUpperInvariant(value[0]) + value[1..];
+
+    private static string FormatMemory(long bytes) => bytes >= 1024L * 1024 * 1024
+        ? $"{bytes / (1024d * 1024 * 1024):0.0} GB"
+        : $"{Math.Max(1, bytes / (1024d * 1024)):0} MB";
+
+    private static string? TryGetProcessPath(int processId)
+    {
+        var handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)processId);
+        if (handle == nint.Zero) return null;
+        try
+        {
+            var capacity = 1024;
+            var buffer = new StringBuilder(capacity);
+            return NativeMethods.QueryFullProcessImageName(handle, 0, buffer, ref capacity) ? buffer.ToString() : null;
+        }
+        finally { NativeMethods.CloseHandle(handle); }
     }
 
     private static ImageSource? ExtractIcon(nint window, Process process)
