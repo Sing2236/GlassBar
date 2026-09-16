@@ -14,7 +14,7 @@ public sealed class WindowService
     {
         var ownPid = Environment.ProcessId;
         var ownSession = Process.GetCurrentProcess().SessionId;
-        var processes = new List<(string Name, long Memory, string? Path)>();
+        var processes = new List<(int Id, string Name, long Memory, string? Path)>();
 
         foreach (var process in Process.GetProcesses())
         {
@@ -27,7 +27,7 @@ public sealed class WindowService
                     if (process.ProcessName is "Idle" or "System" or "Registry" or "Memory Compression")
                         continue;
 
-                    processes.Add((process.ProcessName, process.WorkingSet64, TryGetProcessPath(process.Id)));
+                    processes.Add((process.Id, process.ProcessName, process.WorkingSet64, TryGetProcessPath(process.Id)));
                 }
                 catch { }
             }
@@ -40,14 +40,16 @@ public sealed class WindowService
                 Name = group.Key,
                 Count = group.Count(),
                 Memory = group.Sum(item => item.Memory),
-                Path = group.Select(item => item.Path).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+                Path = group.Select(item => item.Path).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)),
+                ProcessIds = group.Select(item => item.Id).ToArray()
             })
             .OrderByDescending(item => item.Memory)
             .Select(item => new BackgroundProcessItem
             {
                 Name = FormatProcessName(item.Name),
                 Detail = $"{(item.Count > 1 ? $"{item.Count} processes · " : string.Empty)}{FormatMemory(item.Memory)}",
-                Icon = string.IsNullOrWhiteSpace(item.Path) ? null : ShellIconService.GetIcon(item.Path)
+                Icon = string.IsNullOrWhiteSpace(item.Path) ? null : ShellIconService.GetIcon(item.Path),
+                ProcessIds = item.ProcessIds
             })
             .ToList();
     }
@@ -63,7 +65,7 @@ public sealed class WindowService
         {
             if (handle == shell || !NativeMethods.IsWindowVisible(handle)) return true;
             if ((NativeMethods.GetWindowLongPtr(handle, NativeMethods.GWL_EXSTYLE).ToInt64() & NativeMethods.WS_EX_TOOLWINDOW) != 0) return true;
-            if (NativeMethods.DwmGetWindowAttribute(handle, NativeMethods.DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+            if (NativeMethods.DwmGetWindowAttribute(handle, NativeMethods.DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
 
             var length = NativeMethods.GetWindowTextLength(handle);
             if (length == 0) return true;
@@ -76,11 +78,13 @@ public sealed class WindowService
             try
             {
                 using var process = Process.GetProcessById((int)pidValue);
+                var executablePath = TryGetProcessPath(process.Id);
                 windows.Add(new AppItem
                 {
                     Handle = handle,
                     Title = titleBuffer.ToString(),
                     ProcessName = process.ProcessName,
+                    ExecutablePath = executablePath,
                     Icon = ExtractIcon(handle, process),
                     IsActive = handle == foreground
                 });
@@ -89,13 +93,33 @@ public sealed class WindowService
             return true;
         }, nint.Zero);
 
-        return windows.Take(10).ToList();
+        return windows;
     }
 
     public void Activate(AppItem item)
     {
         if (NativeMethods.IsIconic(item.Handle)) NativeMethods.ShowWindow(item.Handle, NativeMethods.SW_RESTORE);
         NativeMethods.SetForegroundWindow(item.Handle);
+    }
+
+    public bool CloseWindow(AppItem item) =>
+        item.Handle != nint.Zero && NativeMethods.PostMessage(item.Handle, NativeMethods.WM_CLOSE, nint.Zero, nint.Zero);
+
+    public int CloseBackgroundProcesses(BackgroundProcessItem item)
+    {
+        var closed = 0;
+        foreach (var processId in item.ProcessIds)
+        {
+            try
+            {
+                using var process = Process.GetProcessById(processId);
+                if (process.Id == Environment.ProcessId || process.HasExited) continue;
+                process.Kill(entireProcessTree: false);
+                closed++;
+            }
+            catch { }
+        }
+        return closed;
     }
 
     private static string FormatProcessName(string value) =>

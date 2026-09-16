@@ -14,6 +14,7 @@ public partial class StartMenuWindow : Window
     private readonly StartMenuService _service = new();
     private readonly ObservableCollection<LaunchableApp> _visibleApps = [];
     private CancellationTokenSource? _searchCancellation;
+    private bool _effectsEnabled = true;
 
     public StartMenuWindow()
     {
@@ -56,12 +57,14 @@ public partial class StartMenuWindow : Window
         MenuContentOffset.BeginAnimation(TranslateTransform.YProperty,
             new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(240)) { BeginTime = contentDelay, EasingFunction = ease });
         MenuEffectsLayer.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(0, 0.62, TimeSpan.FromMilliseconds(360))
+            new DoubleAnimation(0, _effectsEnabled ? 0.78 : 0, TimeSpan.FromMilliseconds(360))
             { BeginTime = TimeSpan.FromMilliseconds(70), EasingFunction = ease });
     }
 
     public void ApplyAppearance(BarSettings settings)
     {
+        _effectsEnabled = !settings.Effect.Equals("Off", StringComparison.OrdinalIgnoreCase);
+        MenuEffectsLayer.Visibility = _effectsEnabled ? Visibility.Visible : Visibility.Collapsed;
         MenuEffectsLayer.Mode = settings.Effect;
         MenuEffectsLayer.Intensity = Math.Clamp(settings.EffectIntensity * 0.82, 0.05, 0.82);
         MenuEffectsLayer.CustomEffect = settings.CustomEffect;

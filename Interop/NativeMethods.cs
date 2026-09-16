@@ -15,11 +15,13 @@ internal static class NativeMethods
     internal const long WS_EX_TOOLWINDOW = 0x00000080L;
     internal const uint MONITOR_DEFAULTTONEAREST = 2;
     internal const uint DWMWA_CLOAKED = 14;
+    internal const uint DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     internal const uint MOD_ALT = 0x0001;
     internal const uint MOD_CONTROL = 0x0002;
     internal const uint MOD_SHIFT = 0x0004;
     internal const int WM_HOTKEY = 0x0312;
     internal const int WM_GETICON = 0x007F;
+    internal const int WM_CLOSE = 0x0010;
     internal const int ICON_SMALL2 = 2;
     internal const int ICON_SMALL = 0;
     internal const int ICON_BIG = 1;
@@ -98,6 +100,9 @@ internal static class NativeMethods
     [DllImport("dwmapi.dll")]
     internal static extern int DwmGetWindowAttribute(nint hwnd, uint attribute, out int value, int size);
 
+    [DllImport("dwmapi.dll")]
+    internal static extern int DwmGetWindowAttribute(nint hwnd, uint attribute, out NativeRect value, int size);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern nint FindWindow(string? className, string? windowName);
 
@@ -121,6 +126,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern nint SendMessage(nint hWnd, int message, nint wParam, nint lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool PostMessage(nint hWnd, int message, nint wParam, nint lParam);
 
     [DllImport("user32.dll", EntryPoint = "GetClassLongPtrW")]
     internal static extern nint GetClassLongPtr(nint hWnd, int index);

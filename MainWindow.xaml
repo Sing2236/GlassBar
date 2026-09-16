@@ -378,6 +378,11 @@
             <Slider x:Name="WidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="720" Maximum="1600" TickFrequency="20" VerticalAlignment="Center" ValueChanged="WidthSlider_ValueChanged" AutomationProperties.AutomationId="WidthSlider" />
           </Grid>
           <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Bar direction" FontWeight="SemiBold" /><TextBlock Text="Reflows and stays draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarHorizontal" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarVertical" /></WrapPanel>
+          </Grid>
+          <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Bar height" FontWeight="SemiBold" /><TextBlock Text="Compact or roomy" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <Slider x:Name="HeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="60" Maximum="82" TickFrequency="2" VerticalAlignment="Center" ValueChanged="HeightSlider_ValueChanged" AutomationProperties.AutomationId="HeightSlider" />
@@ -386,6 +391,20 @@
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Corner radius" FontWeight="SemiBold" /><TextBlock Text="Square to pill shaped" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <Slider x:Name="CornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="10" Maximum="32" TickFrequency="2" VerticalAlignment="Center" ValueChanged="CornerSlider_ValueChanged" AutomationProperties.AutomationId="CornerSlider" />
+          </Grid>
+
+          <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+            <StackPanel>
+              <TextBlock Text="PINNED APPS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <TextBlock Text="Pin an executable here, or right-click an open app icon" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="11" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Pin app" Click="AddPinnedApp_Click" AutomationProperties.AutomationId="AddPinnedApp" /><Button Style="{StaticResource ChoiceButton}" Content="Clear pins" Click="ClearPinnedApps_Click" /></StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Grid Margin="0,18,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Audio visualizer  ·  PRO" FontWeight="SemiBold" /><TextBlock Text="Transparent, reactive and draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="AudioVisualizerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="AudioVisualizerCheck_Click" AutomationProperties.AutomationId="AudioVisualizerEnabled" />
           </Grid>
 
           <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
@@ -425,17 +444,20 @@
 
           <Grid Margin="0,19,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Top widget bar" FontWeight="SemiBold" /><TextBlock Text="Clock, performance, connection, power and focus" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <StackPanel><TextBlock Text="Top widget bar" FontWeight="SemiBold" /><TextBlock Text="Clock, performance, connection, power, focus and news" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="TopOverlayCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="TopOverlayCheck_Click" AutomationProperties.AutomationId="TopOverlayEnabled" />
           </Grid>
           <Border x:Name="TopOverlayOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
             <StackPanel>
+              <TextBlock Text="TOP BAR DIRECTION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,7"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="TopBarOrientation_Click" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="TopBarOrientation_Click" /></WrapPanel>
               <TextBlock Text="TOP BAR WIDGETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
               <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
               <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer  ·  PRO" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Daily news" FontSize="11" /><CheckBox x:Name="TopNewsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="News" /></Grid>
               <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus length" FontSize="11" VerticalAlignment="Center" /><WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="5m" Tag="5" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="15m" Tag="15" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="25m" Tag="25" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="50m" Tag="50" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="90m" Tag="90" Click="FocusDuration_Click" /></WrapPanel></Grid>
 
               <TextBlock Text="TOP BAR GIFS" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
@@ -489,7 +511,7 @@
             <TextBlock x:Name="BackgroundProcessCountText" Text="Loading…" Foreground="{StaticResource MutedText}" FontSize="10" />
           </StackPanel>
         </DockPanel>
-        <ListBox x:Name="BackgroundProcessesList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+        <ListBox x:Name="BackgroundProcessesList" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.AutomationId="BackgroundProcessesList">
           <ListBox.Resources>
@@ -511,6 +533,11 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid Height="34">
+                <Grid.ContextMenu>
+                  <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC">
+                    <MenuItem Header="Close process" Foreground="#F8FAFC" Click="CloseBackgroundProcess_Click" />
+                  </ContextMenu>
+                </Grid.ContextMenu>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                 <Grid Width="22" Height="22" VerticalAlignment="Center">
                   <Border Background="#18FFFFFF" CornerRadius="6" />
@@ -518,8 +545,8 @@
                   <Image Source="{Binding Icon}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality" />
                 </Grid>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding Detail}" Foreground="{StaticResource MutedText}" FontSize="9" />
+                  <TextBlock Text="{Binding Name}" Foreground="#F8FAFC" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Detail}" Foreground="#B8C5D6" FontSize="9" />
                 </StackPanel>
               </Grid>
               <DataTemplate.Triggers>
@@ -539,13 +566,16 @@
       <Grid>
         <controls:AmbientEffect x:Name="EffectsLayer" />
         <Rectangle VerticalAlignment="Top" Height="1" Fill="#70FFFFFF" Opacity="0.28" />
-        <Grid Margin="10,7">
+        <Grid x:Name="BarContentGrid" Margin="10,7">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0" Orientation="Horizontal">
+          <StackPanel x:Name="LaunchControls" Grid.Column="0" Orientation="Horizontal">
+            <TextBlock x:Name="BarDragHandle" Text="&#xE76F;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="#68FFFFFF"
+                       Width="18" VerticalAlignment="Center" TextAlignment="Center" Cursor="SizeAll" ToolTip="Drag GlassBar"
+                       PreviewMouseLeftButtonDown="BarDragHandle_PreviewMouseLeftButtonDown" />
             <Button Style="{StaticResource BarButton}" Click="Start_Click" ToolTip="GlassBar menu" AutomationProperties.AutomationId="StartButton">
               <Grid Width="21" Height="21">
                 <Rectangle Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Top" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" />
@@ -558,18 +588,40 @@
             <Button Style="{StaticResource BarButton}" Click="TaskView_Click" ToolTip="Task view" FontFamily="Segoe MDL2 Assets" Content="&#xE7C4;" FontSize="17" />
           </StackPanel>
 
-          <Border Grid.Column="1" Width="1" Margin="7,9,10,9" Background="#28FFFFFF" />
+          <Border x:Name="BarDivider" Grid.Column="1" Width="1" Margin="7,9,10,9" Background="#28FFFFFF" />
 
-          <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
+          <StackPanel x:Name="AppControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button Style="{StaticResource BarButton}" Click="Explorer_Click" ToolTip="File Explorer" FontFamily="Segoe MDL2 Assets" Content="&#xE8B7;" FontSize="20" />
             <Button Style="{StaticResource BarButton}" Click="Terminal_Click" ToolTip="Terminal" FontFamily="Segoe MDL2 Assets" Content="&#xE756;" FontSize="19" />
+            <ItemsControl x:Name="PinnedApps">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{StaticResource BarButton}" Click="PinnedApp_Click" ToolTip="{Binding DisplayName}" Margin="1,0">
+                    <Button.ContextMenu>
+                      <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC"><MenuItem Header="Unpin from GlassBar" Foreground="#F8FAFC" Click="UnpinApp_Click" /></ContextMenu>
+                    </Button.ContextMenu>
+                    <Grid Width="24" Height="28"><TextBlock x:Name="PinnedFallback" Visibility="Collapsed" Text="&#xE7B8;" FontFamily="Segoe MDL2 Assets" Foreground="#D7E4F2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" /><Image Source="{Binding Icon}" Width="23" Height="23" RenderOptions.BitmapScalingMode="HighQuality" /><Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="{DynamicResource AccentBrush}" /></Grid>
+                  </Button>
+                  <DataTemplate.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="PinnedFallback" Property="Visibility" Value="Visible" /></DataTrigger></DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <ItemsControl x:Name="RunningApps">
+              <ItemsControl.RenderTransform><ScaleTransform ScaleX="1" ScaleY="1" /></ItemsControl.RenderTransform>
+              <ItemsControl.RenderTransformOrigin>0.5,1</ItemsControl.RenderTransformOrigin>
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0">
+                    <Button.ContextMenu>
+                      <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC">
+                        <MenuItem Header="Close window" Foreground="#F8FAFC" Click="CloseRunningApp_Click" />
+                        <MenuItem Header="Pin to GlassBar" Foreground="#F8FAFC" Click="PinRunningApp_Click" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
                     <Grid Width="24" Height="30">
                       <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
                       <Image Source="{Binding Icon}" Width="23" Height="23" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
@@ -591,9 +643,14 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <StackPanel x:Name="AppPager" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
+              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76B;" FontFamily="Segoe MDL2 Assets" Click="PreviousAppsPage_Click" ToolTip="Previous apps" />
+              <TextBlock x:Name="AppPageText" Text="1/1" Foreground="#AFC0D4" FontSize="9" VerticalAlignment="Center" Margin="2,0" />
+              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76C;" FontFamily="Segoe MDL2 Assets" Click="NextAppsPage_Click" ToolTip="Next apps" />
+            </StackPanel>
           </StackPanel>
 
-          <StackPanel Grid.Column="3" Orientation="Horizontal">
+          <StackPanel x:Name="SystemControls" Grid.Column="3" Orientation="Horizontal">
             <Button Style="{StaticResource TinyButton}" Width="28" MinWidth="28" Height="28" Padding="0"
                     Click="BackgroundProcesses_Click" ToolTip="Background processes" AutomationProperties.AutomationId="BackgroundProcessesButton">
               <Path Width="11" Height="7" Stretch="Fill" Stroke="#E8EEF7" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -607,7 +664,7 @@
                 <TextBlock x:Name="DateText" Text="SEP 13" Foreground="{StaticResource MutedText}" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Right" />
               </StackPanel>
             </Button>
-            <Button Style="{StaticResource TinyButton}" Click="Settings_Click" ToolTip="Customize GlassBar" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" AutomationProperties.AutomationId="SettingsButton" />
+            <Button x:Name="SettingsButton" Style="{StaticResource TinyButton}" Click="Settings_Click" ToolTip="Customize GlassBar" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" AutomationProperties.AutomationId="SettingsButton" />
           </StackPanel>
         </Grid>
         <Canvas x:Name="StickerCanvas" Background="Transparent" IsHitTestVisible="False" />

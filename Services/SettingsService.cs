@@ -28,6 +28,7 @@ public sealed class SettingsService
         settings.CustomEffect ??= new CustomEffectConfig();
         settings.Stickers ??= [];
         settings.TopStickers ??= [];
+        settings.PinnedApps ??= [];
         foreach (var sticker in settings.Stickers.Concat(settings.TopStickers))
             if (string.IsNullOrWhiteSpace(sticker.DisplayName) || sticker.DisplayName == "Sticker")
                 sticker.DisplayName = Path.GetFileNameWithoutExtension(sticker.FilePath);
