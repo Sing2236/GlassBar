@@ -22,9 +22,9 @@ $remoteCommit = (& gh api "repos/$Repository/commits/main" --jq .sha).Trim()
 if ($commit -ne $remoteCommit) { throw 'Local main must exactly match the remote main branch.' }
 
 $tag = "v$Version"
-$existingRelease = & gh release view $tag --repo $Repository 2>$null
-if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists." }
-$global:LASTEXITCODE = 0
+$existingTags = @(& gh release list --repo $Repository --limit 100 --json tagName --jq '.[].tagName')
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing GitHub releases.' }
+if ($existingTags -contains $tag) { throw "Release $tag already exists." }
 
 $artifactRoot = Join-Path $projectRoot "artifacts\release-$Version"
 $publishDirectory = Join-Path $artifactRoot 'app'
