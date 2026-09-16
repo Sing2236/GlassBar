@@ -10,6 +10,7 @@ public sealed class BarSettings
     public bool TopShowConnection { get; set; } = true;
     public bool TopShowPower { get; set; } = true;
     public bool TopShowFocus { get; set; } = true;
+    public int TopFocusMinutes { get; set; } = 25;
     public double Opacity { get; set; } = 0.82;
     public double EffectIntensity { get; set; } = 0.72;
     public string Effect { get; set; } = "Rain";

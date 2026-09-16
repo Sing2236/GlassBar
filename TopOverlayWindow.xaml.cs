@@ -22,6 +22,9 @@ public partial class TopOverlayWindow : Window
     {
         InitializeComponent();
         _settings = settings;
+        PerformanceText.FontSize = 11;
+        FocusButton.Width = 108;
+        FocusButton.Height = 29;
         ApplyConfiguration(settings, fitToWidgets: false);
         _metrics.CpuPercent();
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -68,6 +71,7 @@ public partial class TopOverlayWindow : Window
         ConnectionWidget.Visibility = settings.TopShowConnection ? Visibility.Visible : Visibility.Collapsed;
         PowerWidget.Visibility = settings.TopShowPower ? Visibility.Visible : Visibility.Collapsed;
         FocusWidget.Visibility = settings.TopShowFocus ? Visibility.Visible : Visibility.Collapsed;
+        SetFocusLabel($"Focus {Math.Clamp(settings.TopFocusMinutes, 1, 180)}m");
         PositionAtTop(fitToWidgets);
         RenderTopStickers(settings.TopStickers);
     }
@@ -110,6 +114,7 @@ public partial class TopOverlayWindow : Window
     private void RefreshWidgets()
     {
         var now = DateTime.Now;
+        PerformanceText.Text = string.Concat("CPU ", _metrics.CpuPercent(), "% RAM ", _metrics.MemoryPercent(), "%");
         TopClockText.Text = now.ToString("h:mm");
         TopDateText.Text = now.ToString("ddd, MMM d").ToUpperInvariant();
         PerformanceText.Text = $"CPU {_metrics.CpuPercent()}%  ·  RAM {_metrics.MemoryPercent()}%";
@@ -135,10 +140,10 @@ public partial class TopOverlayWindow : Window
         if (_focusEndsAt is not null)
         {
             _focusEndsAt = null;
-            SetFocusLabel("Focus 25");
+            SetFocusLabel($"Focus {_settings.TopFocusMinutes}m");
             return;
         }
-        _focusEndsAt = DateTime.Now.AddMinutes(25);
+        _focusEndsAt = DateTime.Now.AddMinutes(Math.Clamp(_settings.TopFocusMinutes, 1, 180));
         RefreshWidgets();
     }
 
