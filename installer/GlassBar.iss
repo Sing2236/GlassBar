@@ -2,6 +2,9 @@
 #ifndef MyAppVersion
   #define MyAppVersion "0.3.0"
 #endif
+#ifndef MyAppSourceDir
+  #define MyAppSourceDir "..\release"
+#endif
 #define MyAppPublisher "Ethan Huynh"
 #define MyAppURL "https://github.com/Sing2236/GlassBar"
 #define MyAppExeName "GlassBar.exe"
@@ -39,7 +42,7 @@ Name: "startup"; Description: "Start GlassBar when I sign in"; GroupDescription:
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "..\release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
