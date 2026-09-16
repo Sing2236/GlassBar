@@ -15,6 +15,9 @@ installer/output/
 *.suo
 *.log
 *.private.pem
+*-private.pem
+*.pfx
+*.p12
 .keys/
 website/node_modules/
 website/.vercel/

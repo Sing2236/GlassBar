@@ -18,5 +18,6 @@
   <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <EmbeddedResource Include="assets\license-public.pem" LogicalName="GlassBar.LicensePublicKey" />
+    <EmbeddedResource Include="assets\update-public.pem" LogicalName="GlassBar.UpdatePublicKey" />
   </ItemGroup>
 </Project>
