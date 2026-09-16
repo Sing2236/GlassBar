@@ -7,12 +7,16 @@
     <Nullable>enable</Nullable>
     <AssemblyName>GlassBar</AssemblyName>
     <RootNamespace>GlassBar</RootNamespace>
-    <Version>0.2.0</Version>
-    <InformationalVersion>0.2.0</InformationalVersion>
+    <Version>0.3.0</Version>
+    <InformationalVersion>0.3.0</InformationalVersion>
     <Authors>Ethan Huynh</Authors>
     <Product>GlassBar</Product>
     <Description>A customizable transparent taskbar for Windows.</Description>
     <ApplicationIcon>assets\GlassBar.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tools\**\*.cs" />
+    <EmbeddedResource Include="assets\license-public.pem" LogicalName="GlassBar.LicensePublicKey" />
+  </ItemGroup>
 </Project>

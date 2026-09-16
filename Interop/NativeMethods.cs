@@ -8,8 +8,12 @@ internal static class NativeMethods
     internal const int SW_HIDE = 0;
     internal const int SW_SHOW = 5;
     internal const int SW_RESTORE = 9;
+    internal const int GWL_STYLE = -16;
     internal const int GWL_EXSTYLE = -20;
+    internal const long WS_CAPTION = 0x00C00000L;
+    internal const long WS_POPUP = 0x80000000L;
     internal const long WS_EX_TOOLWINDOW = 0x00000080L;
+    internal const uint MONITOR_DEFAULTTONEAREST = 2;
     internal const uint DWMWA_CLOAKED = 14;
     internal const uint MOD_ALT = 0x0001;
     internal const uint MOD_CONTROL = 0x0002;
@@ -64,6 +68,20 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetWindowRect(nint hWnd, out NativeRect rect);
+
+    [DllImport("user32.dll")]
+    internal static extern nint MonitorFromWindow(nint hWnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int GetClassName(nint hWnd, StringBuilder className, int count);
 
     [DllImport("user32.dll")]
     internal static extern bool SetForegroundWindow(nint hWnd);
@@ -124,6 +142,24 @@ internal static class NativeMethods
         public int AccentFlags;
         public int GradientColor;
         public int AnimationId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    internal struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -1,0 +1,87 @@
+name: Release main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glassbar-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      VERSION_PREFIX: 0.3
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Choose release version
+        shell: pwsh
+        run: |
+          $version = "$env:VERSION_PREFIX.${{ github.run_number }}"
+          "GLASSBAR_VERSION=$version" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "GLASSBAR_TAG=v$version" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Publish GlassBar
+        shell: pwsh
+        run: |
+          dotnet publish .\GlassBar.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=None `
+            -p:IncludeSourceRevisionInInformationalVersion=false `
+            -p:Version=$env:GLASSBAR_VERSION `
+            -p:InformationalVersion="$env:GLASSBAR_VERSION+${{ github.sha }}" `
+            -o .\release
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress --yes
+
+      - name: Build installer and update manifest
+        shell: pwsh
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          & $compiler "/DMyAppVersion=$env:GLASSBAR_VERSION" .\installer\GlassBar.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $installer = Resolve-Path .\installer\output\GlassBarSetup.exe
+          $manifest = [ordered]@{
+            version = $env:GLASSBAR_VERSION
+            installerUrl = "https://github.com/${{ github.repository }}/releases/download/$env:GLASSBAR_TAG/GlassBarSetup.exe"
+            sha256 = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
+          }
+          [IO.File]::WriteAllText(
+            (Join-Path $PWD 'update.json'),
+            ($manifest | ConvertTo-Json),
+            [Text.UTF8Encoding]::new($false))
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GLASSBAR_TAG `
+            .\installer\output\GlassBarSetup.exe `
+            .\release\GlassBar.exe `
+            .\update.json `
+            --repo "${{ github.repository }}" `
+            --target "${{ github.sha }}" `
+            --title "GlassBar $env:GLASSBAR_TAG" `
+            --notes "Automatic build from main at ${{ github.sha }}." `
+            --latest

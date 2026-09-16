@@ -256,6 +256,23 @@ body {
   border-radius: 2px;
 }
 
+.license-note {
+  max-width: 520px;
+  margin: -10px 0 0;
+  color: #73767d;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: arrive 0.8s ease 0.9s forwards;
+}
+
+.license-note a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+
 @keyframes arrive {
   to {
     opacity: 1;
@@ -303,7 +320,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .glassbar,
-  .links {
+  .links,
+  .license-note {
     opacity: 1;
     transform: none;
     animation: none;

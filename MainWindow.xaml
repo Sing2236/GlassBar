@@ -236,13 +236,47 @@
             <WrapPanel Margin="0,9,0,0">
               <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" Click="Effect_Click" AutomationProperties.AutomationId="EffectRain" />
               <Button Style="{StaticResource ChoiceButton}" Content="Aurora" Tag="Aurora" Click="Effect_Click" AutomationProperties.AutomationId="EffectAurora" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Snow" Tag="Snow" Click="Effect_Click" AutomationProperties.AutomationId="EffectSnow" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Fireflies" Tag="Fireflies" Click="Effect_Click" AutomationProperties.AutomationId="EffectFireflies" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Pulse" Tag="Pulse" Click="Effect_Click" AutomationProperties.AutomationId="EffectPulse" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Custom" Tag="Custom" Click="Effect_Click" AutomationProperties.AutomationId="EffectCustom" />
+              <Button x:Name="EffectSnowButton" Style="{StaticResource ChoiceButton}" Content="Snow  PRO" Tag="Snow" Click="Effect_Click" AutomationProperties.AutomationId="EffectSnow" />
+              <Button x:Name="EffectFirefliesButton" Style="{StaticResource ChoiceButton}" Content="Fireflies  PRO" Tag="Fireflies" Click="Effect_Click" AutomationProperties.AutomationId="EffectFireflies" />
+              <Button x:Name="EffectPulseButton" Style="{StaticResource ChoiceButton}" Content="Pulse  PRO" Tag="Pulse" Click="Effect_Click" AutomationProperties.AutomationId="EffectPulse" />
+              <Button x:Name="EffectCustomButton" Style="{StaticResource ChoiceButton}" Content="Custom  PRO" Tag="Custom" Click="Effect_Click" AutomationProperties.AutomationId="EffectCustom" />
               <Button Style="{StaticResource ChoiceButton}" Content="Off" Tag="Off" Click="Effect_Click" AutomationProperties.AutomationId="EffectOff" />
             </WrapPanel>
           </StackPanel>
+
+          <Border x:Name="ProPanel" Margin="0,12,0,0" Padding="14" CornerRadius="14"
+                  Background="#121EC8F0" BorderBrush="#3A7DD3FC" BorderThickness="1"
+                  AutomationProperties.AutomationId="ProPanel">
+            <StackPanel>
+              <DockPanel LastChildFill="True">
+                <Border DockPanel.Dock="Right" Padding="9,4" CornerRadius="9" Background="#257DD3FC" Margin="12,0,0,0">
+                  <TextBlock x:Name="ProStatusText" Text="LOCKED" FontSize="10" FontWeight="SemiBold"
+                             Foreground="#BEEBFF" AutomationProperties.AutomationId="ProStatus" />
+                </Border>
+                <StackPanel>
+                  <TextBlock Text="GlassBar Pro" FontWeight="SemiBold" />
+                  <TextBlock Text="$5 once · lifetime effects unlock" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" />
+                </StackPanel>
+              </DockPanel>
+
+              <TextBlock Text="Unlock Snow, Fireflies, Pulse, and the Custom Effect Lab. We verify the PayPal payment, then email a signed lifetime key to the payment email."
+                         TextWrapping="Wrap" Foreground="#C9D6E5" FontSize="11" Margin="0,11,0,0" />
+
+              <StackPanel x:Name="ProEntryPanel" Margin="0,12,0,0">
+                <Button x:Name="BuyProButton" Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left"
+                        Content="Buy Pro · $5 with PayPal" Click="BuyPro_Click" AutomationProperties.AutomationId="BuyPro" />
+                <TextBox x:Name="LicenseKeyBox" Style="{StaticResource GlassTextBox}" Height="68" Margin="0,4,0,0"
+                         TextWrapping="Wrap" VerticalContentAlignment="Top" MaxLength="2048"
+                         AutomationProperties.Name="GlassBar Pro license key" AutomationProperties.AutomationId="LicenseKey" />
+                <Button Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left" Margin="0,9,0,0"
+                        Content="Activate license" Click="ActivateLicense_Click" AutomationProperties.AutomationId="ActivateLicense" />
+              </StackPanel>
+
+              <TextBlock x:Name="LicenseMessageText" Text="Rain and Aurora are free."
+                         TextWrapping="Wrap" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,7,0,0"
+                         AutomationProperties.AutomationId="LicenseMessage" />
+            </StackPanel>
+          </Border>
 
           <Border x:Name="CustomEffectPanel" Margin="0,14,0,0" Padding="14" CornerRadius="14" Visibility="Collapsed"
                   Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
@@ -412,6 +446,12 @@
               <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="TopStickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="TopStickerOpacitySlider" /></Grid>
             </StackPanel>
           </Border>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Use Windows search" FontWeight="SemiBold" /><TextBlock Text="Magnifier opens the original Windows Search" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="UseWindowsSearchCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                      Checked="UseWindowsSearchCheck_Changed" Unchecked="UseWindowsSearchCheck_Changed" AutomationProperties.AutomationId="UseWindowsSearch" />
+          </Grid>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
