@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using GlassBar.Controls;
 using GlassBar.Interop;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService = new();
     private readonly LicenseService _licenseService = new();
     private readonly ObservableCollection<AppItem> _apps = [];
+    private readonly ObservableCollection<PinnedAppConfig> _pinnedApps = [];
     private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
@@ -30,6 +32,10 @@ public partial class MainWindow : Window
     private readonly bool _keepVisibleForUiTests;
     private StartMenuWindow? _startMenu;
     private TopOverlayWindow? _topOverlay;
+    private AudioVisualizerWindow? _audioVisualizer;
+    private IReadOnlyList<AppItem> _allApps = [];
+    private int _appPage;
+    private bool _pageAnimating;
     private StickerConfig? _selectedSticker;
     private StickerConfig? _selectedTopSticker;
     private Border? _draggedSticker;
@@ -51,6 +57,7 @@ public partial class MainWindow : Window
         _settings = _settingsService.Load();
         if (safeMode) _settings.HideNativeTaskbar = false;
         RunningApps.ItemsSource = _apps;
+        PinnedApps.ItemsSource = _pinnedApps;
         BackgroundProcessesList.ItemsSource = _backgroundProcesses;
         ApplySettings();
 
@@ -84,6 +91,7 @@ public partial class MainWindow : Window
         PositionWindow();
         RenderStickers();
         ApplyTopOverlayState();
+        ApplyAudioVisualizerState();
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide();
         UpdateFullscreenVisibility();
     }
@@ -109,6 +117,7 @@ public partial class MainWindow : Window
         _fullscreenTimer.Stop();
         _startMenu?.Close();
         _topOverlay?.Close();
+        _audioVisualizer?.Close();
         var handle = new WindowInteropHelper(this).Handle;
         if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
         NativeTaskbar.Show();
@@ -125,24 +134,129 @@ public partial class MainWindow : Window
         return nint.Zero;
     }
 
+    private bool IsBarVertical => _settings.BarOrientation.Equals("Vertical", StringComparison.OrdinalIgnoreCase);
+
     private void PositionWindow()
     {
-        var availableWidth = Math.Max(720, SystemParameters.PrimaryScreenWidth - 24);
-        Width = Math.Clamp(_settings.BarWidth, 720, availableWidth);
-        BarRow.Height = new GridLength(_settings.BarHeight);
-        Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
-        Top = SystemParameters.PrimaryScreenHeight - Height - 8;
+        ApplyBarOrientationLayout();
+        var screenWidth = SystemParameters.PrimaryScreenWidth;
+        var screenHeight = SystemParameters.PrimaryScreenHeight;
+        var maxLength = Math.Max(520, (IsBarVertical ? screenHeight : screenWidth) - 24);
+        var barLength = Math.Clamp(_settings.BarWidth, 520, maxLength);
+        var barThickness = Math.Clamp(_settings.BarHeight, 60, 82) + 8;
+        var popupSize = _settingsOpen
+            ? Math.Min(650, (IsBarVertical ? screenWidth : screenHeight) - barThickness - 18)
+            : _backgroundProcessesOpen ? 324 : 0;
+
+        WindowRoot.RowDefinitions.Clear();
+        WindowRoot.ColumnDefinitions.Clear();
+        if (!IsBarVertical)
+        {
+            var barX = _settings.BarX >= 0 ? _settings.BarX : (screenWidth - barLength) / 2;
+            var barY = _settings.BarY >= 0 ? _settings.BarY : screenHeight - barThickness - 8;
+            barX = Math.Clamp(barX, 0, Math.Max(0, screenWidth - barLength));
+            barY = Math.Clamp(barY, 0, Math.Max(0, screenHeight - barThickness));
+            var popupAbove = popupSize == 0 || barY >= popupSize;
+            WindowRoot.ColumnDefinitions.Add(new ColumnDefinition());
+            if (popupSize > 0 && popupAbove) WindowRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(popupSize) });
+            WindowRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(barThickness) });
+            if (popupSize > 0 && !popupAbove) WindowRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(popupSize) });
+            Grid.SetColumn(BarSurface, 0);
+            Grid.SetRow(BarSurface, popupSize > 0 && popupAbove ? 1 : 0);
+            PlacePopupPanels(row: popupSize > 0 && popupAbove ? 0 : 1, column: 0, horizontal: true);
+            Width = barLength;
+            Height = barThickness + popupSize;
+            Left = barX;
+            Top = popupSize > 0 && popupAbove ? barY - popupSize : barY;
+        }
+        else
+        {
+            var barX = _settings.BarX >= 0 ? _settings.BarX : 12;
+            var barY = _settings.BarY >= 0 ? _settings.BarY : (screenHeight - barLength) / 2;
+            barX = Math.Clamp(barX, 0, Math.Max(0, screenWidth - barThickness));
+            barY = Math.Clamp(barY, 0, Math.Max(0, screenHeight - barLength));
+            var popupLeft = popupSize == 0 || barX >= popupSize;
+            WindowRoot.RowDefinitions.Add(new RowDefinition());
+            if (popupSize > 0 && popupLeft) WindowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popupSize) });
+            WindowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(barThickness) });
+            if (popupSize > 0 && !popupLeft) WindowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(popupSize) });
+            Grid.SetRow(BarSurface, 0);
+            Grid.SetColumn(BarSurface, popupSize > 0 && popupLeft ? 1 : 0);
+            PlacePopupPanels(row: 0, column: popupSize > 0 && popupLeft ? 0 : 1, horizontal: false);
+            Width = barThickness + popupSize;
+            Height = barLength;
+            Left = popupSize > 0 && popupLeft ? barX - popupSize : barX;
+            Top = barY;
+        }
     }
 
-    private void UpdateWindowHeight()
+    private void PlacePopupPanels(int row, int column, bool horizontal)
     {
-        Height = _settingsOpen
-            ? Math.Min(690, SystemParameters.PrimaryScreenHeight - 18)
-            : _backgroundProcessesOpen
-                ? Math.Min(_settings.BarHeight + 334, SystemParameters.PrimaryScreenHeight - 18)
-                : _settings.BarHeight + 10;
-        PositionWindow();
+        foreach (var panel in new[] { SettingsPanel, BackgroundProcessesPanel })
+        {
+            Grid.SetRow(panel, row);
+            Grid.SetColumn(panel, column);
+        }
+        SettingsPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        SettingsPanel.VerticalAlignment = horizontal ? VerticalAlignment.Stretch : VerticalAlignment.Center;
+        SettingsPanel.Margin = horizontal ? new Thickness(0, 8, 8, 8) : new Thickness(8);
+        BackgroundProcessesPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Right : HorizontalAlignment.Center;
+        BackgroundProcessesPanel.VerticalAlignment = horizontal ? VerticalAlignment.Bottom : VerticalAlignment.Center;
+        BackgroundProcessesPanel.Margin = new Thickness(8);
     }
+
+    private void ApplyBarOrientationLayout()
+    {
+        BarContentGrid.ColumnDefinitions.Clear();
+        BarContentGrid.RowDefinitions.Clear();
+        var orientation = IsBarVertical ? Orientation.Vertical : Orientation.Horizontal;
+        LaunchControls.Orientation = orientation;
+        AppControls.Orientation = orientation;
+        SystemControls.Orientation = orientation;
+        AppPager.Orientation = orientation;
+        SetItemsOrientation(RunningApps, orientation);
+        SetItemsOrientation(PinnedApps, orientation);
+
+        if (IsBarVertical)
+        {
+            BarContentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            BarContentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            BarContentGrid.RowDefinitions.Add(new RowDefinition());
+            BarContentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(LaunchControls, 0); Grid.SetColumn(LaunchControls, 0);
+            Grid.SetRow(BarDivider, 1); Grid.SetColumn(BarDivider, 0);
+            Grid.SetRow(AppControls, 2); Grid.SetColumn(AppControls, 0);
+            Grid.SetRow(SystemControls, 3); Grid.SetColumn(SystemControls, 0);
+            BarDivider.Width = 30; BarDivider.Height = 1; BarDivider.Margin = new Thickness(9, 7, 9, 7);
+            AppControls.VerticalAlignment = VerticalAlignment.Center;
+            AppControls.HorizontalAlignment = HorizontalAlignment.Center;
+            BarDragHandle.Width = 42; BarDragHandle.Height = 18;
+        }
+        else
+        {
+            BarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            BarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            BarContentGrid.ColumnDefinitions.Add(new ColumnDefinition());
+            BarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(LaunchControls, 0); Grid.SetRow(LaunchControls, 0);
+            Grid.SetColumn(BarDivider, 1); Grid.SetRow(BarDivider, 0);
+            Grid.SetColumn(AppControls, 2); Grid.SetRow(AppControls, 0);
+            Grid.SetColumn(SystemControls, 3); Grid.SetRow(SystemControls, 0);
+            BarDivider.Width = 1; BarDivider.Height = double.NaN; BarDivider.Margin = new Thickness(7, 9, 10, 9);
+            AppControls.VerticalAlignment = VerticalAlignment.Center;
+            AppControls.HorizontalAlignment = HorizontalAlignment.Center;
+            BarDragHandle.Width = 18; BarDragHandle.Height = double.NaN;
+        }
+    }
+
+    private static void SetItemsOrientation(ItemsControl control, Orientation orientation)
+    {
+        var factory = new FrameworkElementFactory(typeof(StackPanel));
+        factory.SetValue(StackPanel.OrientationProperty, orientation);
+        control.ItemsPanel = new ItemsPanelTemplate(factory);
+    }
+
+    private void UpdateWindowHeight() => PositionWindow();
 
     private void RefreshBar()
     {
@@ -150,10 +264,20 @@ public partial class MainWindow : Window
         ClockText.Text = now.ToString("h:mm");
         DateText.Text = now.ToString("MMM d").ToUpperInvariant();
 
-        var visibleAppLimit = Math.Clamp((int)((Width - 460) / 46), 3, 10);
-        var latest = _windowService.GetOpenWindows().Take(visibleAppLimit);
+        _allApps = _windowService.GetOpenWindows();
+        if (!_pageAnimating) PopulateAppPage();
+    }
+
+    private int AppPageSize => Math.Max(1, (int)((_settings.BarWidth - 510 - (_pinnedApps.Count * 44)) / 46));
+
+    private void PopulateAppPage()
+    {
+        var pageCount = Math.Max(1, (int)Math.Ceiling(_allApps.Count / (double)AppPageSize));
+        _appPage = Math.Clamp(_appPage, 0, pageCount - 1);
         _apps.Clear();
-        foreach (var app in latest) _apps.Add(app);
+        foreach (var app in _allApps.Skip(_appPage * AppPageSize).Take(AppPageSize)) _apps.Add(app);
+        AppPager.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+        AppPageText.Text = $"{_appPage + 1}/{pageCount}";
     }
 
     private void UpdateFullscreenVisibility()
@@ -170,18 +294,31 @@ public partial class MainWindow : Window
         {
             _startMenu?.Hide();
             SetSettingsOpen(false);
+            _topOverlay?.Hide();
+            _audioVisualizer?.Hide();
             Hide();
             return;
         }
 
         ShowActivated = false;
         Show();
+        if (_settings.TopOverlayEnabled) _topOverlay?.Show();
+        if (_settings.AudioVisualizerEnabled) _audioVisualizer?.Show();
     }
 
     private void ApplySettings()
     {
         var premiumEffectReset = !_licenseService.IsPro && IsPremiumEffect(_settings.Effect);
+        var premiumFeatureReset = false;
         if (premiumEffectReset) _settings.Effect = "Rain";
+        if (!_licenseService.IsPro)
+        {
+            premiumFeatureReset = _settings.TopShowPerformance || _settings.TopShowPower || _settings.TopShowFocus || _settings.AudioVisualizerEnabled;
+            _settings.TopShowPerformance = false;
+            _settings.TopShowPower = false;
+            _settings.TopShowFocus = false;
+            _settings.AudioVisualizerEnabled = false;
+        }
         if (ColorConverter.ConvertFromString(_settings.Accent) is Color accent)
         {
             Resources["AccentBrush"] = new SolidColorBrush(accent);
@@ -193,13 +330,13 @@ public partial class MainWindow : Window
         if (Resources["GlassBackground"] is SolidColorBrush glass) glass.Opacity = _settings.Opacity;
         OpacitySlider.Value = _settings.Opacity;
         IntensitySlider.Value = _settings.EffectIntensity;
-        WidthSlider.Maximum = Math.Max(720, SystemParameters.PrimaryScreenWidth - 24);
+        WidthSlider.Minimum = 520;
+        WidthSlider.Maximum = Math.Max(520, (IsBarVertical ? SystemParameters.PrimaryScreenHeight : SystemParameters.PrimaryScreenWidth) - 24);
         WidthSlider.Value = Math.Min(_settings.BarWidth, WidthSlider.Maximum);
         WidthValueText.Text = $"{Math.Round(WidthSlider.Value)} px";
         HeightSlider.Value = _settings.BarHeight;
         CornerSlider.Value = _settings.CornerRadius;
         BarSurface.CornerRadius = new CornerRadius(_settings.CornerRadius);
-        BarRow.Height = new GridLength(_settings.BarHeight);
         UseWindowsSearchCheck.IsChecked = _settings.UseWindowsSearch;
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
@@ -209,6 +346,8 @@ public partial class MainWindow : Window
         TopConnectionCheck.IsChecked = _settings.TopShowConnection;
         TopPowerCheck.IsChecked = _settings.TopShowPower;
         TopFocusCheck.IsChecked = _settings.TopShowFocus;
+        TopNewsCheck.IsChecked = _settings.TopShowNews;
+        AudioVisualizerCheck.IsChecked = _settings.AudioVisualizerEnabled;
         TopOverlayOptionsPanel.Visibility = _settings.TopOverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
         _selectedTopSticker ??= _settings.TopStickers.FirstOrDefault();
         RefreshTopStickerPicker();
@@ -225,7 +364,9 @@ public partial class MainWindow : Window
         if (_selectedSticker is not null) SetStickerSliders(_selectedSticker);
         StickerSizeSlider.IsEnabled = _settings.Stickers.Count > 0;
         StickerOpacitySlider.IsEnabled = _settings.Stickers.Count > 0;
-        if (premiumEffectReset) SaveSettings();
+        RefreshPinnedApps();
+        ApplyBarOrientationLayout();
+        if (premiumEffectReset || premiumFeatureReset) SaveSettings();
     }
 
     private void SaveSettings() => _settingsService.Save(_settings);
@@ -283,13 +424,127 @@ public partial class MainWindow : Window
         if (sender is Button { DataContext: AppItem app }) _windowService.Activate(app);
     }
 
+    private void CloseRunningApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<AppItem>(sender) is { } app) _windowService.CloseWindow(app);
+    }
+
+    private void PinRunningApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<AppItem>(sender) is not { ExecutablePath: { Length: > 0 } path } app) return;
+        AddPinnedApp(app.Title, path);
+    }
+
+    private void CloseBackgroundProcess_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<BackgroundProcessItem>(sender) is not { } process) return;
+        _windowService.CloseBackgroundProcesses(process);
+        Dispatcher.BeginInvoke(RefreshBackgroundProcesses, DispatcherPriority.Background);
+    }
+
+    private static T? GetContextItem<T>(object sender) where T : class
+    {
+        if (sender is FrameworkElement { DataContext: T direct }) return direct;
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: T placed } } }) return placed;
+        return null;
+    }
+
+    private void PinnedApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: PinnedAppConfig app }) return;
+        try { Process.Start(new ProcessStartInfo(app.Target) { UseShellExecute = true }); } catch { }
+    }
+
+    private void UnpinApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<PinnedAppConfig>(sender) is not { } app) return;
+        _settings.PinnedApps.RemoveAll(item => item.Id == app.Id);
+        RefreshPinnedApps();
+        SaveSettings();
+    }
+
+    private void AddPinnedApp_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Pin an app to GlassBar",
+            Filter = "Applications and shortcuts (*.exe;*.lnk)|*.exe;*.lnk|All files (*.*)|*.*",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) == true) AddPinnedApp(Path.GetFileNameWithoutExtension(dialog.FileName), dialog.FileName);
+    }
+
+    private void AddPinnedApp(string displayName, string target)
+    {
+        if (_settings.PinnedApps.Any(item => item.Target.Equals(target, StringComparison.OrdinalIgnoreCase))) return;
+        _settings.PinnedApps.Add(new PinnedAppConfig { DisplayName = displayName, Target = target });
+        RefreshPinnedApps();
+        SaveSettings();
+    }
+
+    private void ClearPinnedApps_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.PinnedApps.Clear();
+        RefreshPinnedApps();
+        SaveSettings();
+    }
+
+    private void RefreshPinnedApps()
+    {
+        _pinnedApps.Clear();
+        foreach (var app in _settings.PinnedApps)
+        {
+            app.Icon = ShellIconService.GetIcon(app.Target);
+            _pinnedApps.Add(app);
+        }
+        PopulateAppPage();
+    }
+
+    private void PreviousAppsPage_Click(object sender, RoutedEventArgs e) => FlipAppsPage(-1);
+    private void NextAppsPage_Click(object sender, RoutedEventArgs e) => FlipAppsPage(1);
+
+    private void FlipAppsPage(int direction)
+    {
+        var pageCount = Math.Max(1, (int)Math.Ceiling(_allApps.Count / (double)AppPageSize));
+        if (_pageAnimating || pageCount < 2) return;
+        _pageAnimating = true;
+        var transform = (ScaleTransform)RunningApps.RenderTransform;
+        var foldOut = new DoubleAnimation(1, 0.04, TimeSpan.FromMilliseconds(115))
+        { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+        foldOut.Completed += (_, _) =>
+        {
+            _appPage = (_appPage + direction + pageCount) % pageCount;
+            PopulateAppPage();
+            var foldIn = new DoubleAnimation(0.04, 1, TimeSpan.FromMilliseconds(155))
+            { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.25 } };
+            foldIn.Completed += (_, _) => _pageAnimating = false;
+            transform.BeginAnimation(ScaleTransform.ScaleYProperty, foldIn);
+        };
+        transform.BeginAnimation(ScaleTransform.ScaleYProperty, foldOut);
+    }
+
+    private void BarDragHandle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+        try
+        {
+            DragMove();
+            var barOffset = BarSurface.TranslatePoint(new Point(0, 0), this);
+            _settings.BarX = Left + barOffset.X - BarSurface.Margin.Left;
+            _settings.BarY = Top + barOffset.Y - BarSurface.Margin.Top;
+            SaveSettings();
+            e.Handled = true;
+        }
+        catch (InvalidOperationException) { }
+    }
+
     private void Settings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(!_settingsOpen);
     private void CloseSettings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(false);
 
     private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source) return;
-        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, BarSurface))
+        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, SettingsButton))
             SetSettingsOpen(false);
         if (_backgroundProcessesOpen && !IsWithin(source, BackgroundProcessesPanel) && !IsWithin(source, BarSurface))
             SetBackgroundProcessesOpen(false);
@@ -612,8 +867,22 @@ public partial class MainWindow : Window
     {
         if (_initializing) return;
         _settings.BarHeight = e.NewValue;
-        BarRow.Height = new GridLength(e.NewValue);
         UpdateWindowHeight();
+        SaveSettings();
+    }
+
+    private void BarOrientation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string orientation } || _settings.BarOrientation == orientation) return;
+        _settings.BarOrientation = orientation;
+        _settings.BarX = -1;
+        _settings.BarY = -1;
+        WidthSlider.Maximum = Math.Max(520, (IsBarVertical ? SystemParameters.PrimaryScreenHeight : SystemParameters.PrimaryScreenWidth) - 24);
+        _settings.BarWidth = Math.Min(_settings.BarWidth, WidthSlider.Maximum);
+        WidthSlider.Value = _settings.BarWidth;
+        _appPage = 0;
+        PositionWindow();
+        PopulateAppPage();
         SaveSettings();
     }
 
@@ -836,7 +1105,12 @@ public partial class MainWindow : Window
 
     private void TopWidgetCheck_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not CheckBox { Tag: string widget }) return;
+        if (sender is not CheckBox { Tag: string widget } checkBox) return;
+        if (checkBox.IsChecked == true && widget is "Performance" or "Power" or "Focus" && !EnsurePro($"{widget} widget"))
+        {
+            checkBox.IsChecked = false;
+            return;
+        }
         switch (widget)
         {
             case "Clock": _settings.TopShowClock = TopClockCheck.IsChecked == true; break;
@@ -844,6 +1118,7 @@ public partial class MainWindow : Window
             case "Connection": _settings.TopShowConnection = TopConnectionCheck.IsChecked == true; break;
             case "Power": _settings.TopShowPower = TopPowerCheck.IsChecked == true; break;
             case "Focus": _settings.TopShowFocus = TopFocusCheck.IsChecked == true; break;
+            case "News": _settings.TopShowNews = TopNewsCheck.IsChecked == true; break;
         }
         _topOverlay?.ApplyConfiguration(_settings);
         SaveSettings();
@@ -851,10 +1126,53 @@ public partial class MainWindow : Window
 
     private void FocusDuration_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsurePro("Focus timer")) return;
         if (sender is not Button { Tag: string value } || !int.TryParse(value, out var minutes)) return;
         _settings.TopFocusMinutes = Math.Clamp(minutes, 1, 180);
         _topOverlay?.ApplyConfiguration(_settings, fitToWidgets: false);
         SaveSettings();
+    }
+
+    private void TopBarOrientation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string orientation } || _settings.TopBarOrientation == orientation) return;
+        _settings.TopBarOrientation = orientation;
+        _settings.TopBarWidth = orientation == "Vertical" ? 196 : 0;
+        _settings.TopBarHeight = orientation == "Vertical" ? 360 : 58;
+        _topOverlay?.ApplyConfiguration(_settings, fitToWidgets: true);
+        SaveSettings();
+    }
+
+    private void AudioVisualizerCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (AudioVisualizerCheck.IsChecked == true && !EnsurePro("Audio visualizer"))
+        {
+            AudioVisualizerCheck.IsChecked = false;
+            return;
+        }
+        _settings.AudioVisualizerEnabled = AudioVisualizerCheck.IsChecked == true;
+        ApplyAudioVisualizerState();
+        SaveSettings();
+    }
+
+    private void ApplyAudioVisualizerState()
+    {
+        if (_settings.AudioVisualizerEnabled && _licenseService.IsPro)
+        {
+            if (_audioVisualizer is null)
+            {
+                _audioVisualizer = new AudioVisualizerWindow(_settings);
+                _audioVisualizer.Closed += (_, _) =>
+                {
+                    _audioVisualizer = null;
+                    if (AudioVisualizerCheck is not null) AudioVisualizerCheck.IsChecked = _settings.AudioVisualizerEnabled;
+                };
+                _audioVisualizer.Show();
+            }
+            return;
+        }
+        _audioVisualizer?.Close();
+        _audioVisualizer = null;
     }
 
     private void ApplyTopOverlayState()

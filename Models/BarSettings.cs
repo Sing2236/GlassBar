@@ -10,7 +10,17 @@ public sealed class BarSettings
     public bool TopShowConnection { get; set; } = true;
     public bool TopShowPower { get; set; } = true;
     public bool TopShowFocus { get; set; } = true;
+    public bool TopShowNews { get; set; } = true;
     public int TopFocusMinutes { get; set; } = 25;
+    public string BarOrientation { get; set; } = "Horizontal";
+    public double BarX { get; set; } = -1;
+    public double BarY { get; set; } = -1;
+    public string TopBarOrientation { get; set; } = "Horizontal";
+    public double TopBarX { get; set; } = -1;
+    public double TopBarY { get; set; } = -1;
+    public bool AudioVisualizerEnabled { get; set; }
+    public double AudioVisualizerX { get; set; } = -1;
+    public double AudioVisualizerY { get; set; } = -1;
     public bool UseWindowsSearch { get; set; }
     public double Opacity { get; set; } = 0.82;
     public double EffectIntensity { get; set; } = 0.72;
@@ -24,4 +34,5 @@ public sealed class BarSettings
     public CustomEffectConfig CustomEffect { get; set; } = new();
     public List<StickerConfig> Stickers { get; set; } = [];
     public List<StickerConfig> TopStickers { get; set; } = [];
+    public List<PinnedAppConfig> PinnedApps { get; set; } = [];
 }
