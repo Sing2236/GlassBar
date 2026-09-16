@@ -1,0 +1,7 @@
+* @Sing2236
+
+/.github/workflows/ @Sing2236
+/Services/UpdateService.cs @Sing2236
+/Services/UpdateManifestSignature.cs @Sing2236
+/assets/update-public.pem @Sing2236
+/scripts/publish-secure-release.ps1 @Sing2236

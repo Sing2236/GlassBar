@@ -1,0 +1,40 @@
+name: Validate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build desktop app
+        shell: pwsh
+        run: dotnet build .\GlassBar.csproj -c Release
+
+      - name: Build signing tool
+        shell: pwsh
+        run: dotnet build .\tools\GlassBar.LicenseIssuer\GlassBar.LicenseIssuer.csproj -c Release
+
+      - name: Audit website dependencies
+        shell: pwsh
+        working-directory: website
+        run: |
+          npm ci
+          npm audit --audit-level=high

@@ -5,4 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Security\UpdateManifestSignatureCore.cs" Link="Security\UpdateManifestSignatureCore.cs" />
+  </ItemGroup>
 </Project>

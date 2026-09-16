@@ -22,7 +22,8 @@ internal static class UpdateService
             var manifestJson = await Client.GetStringAsync(ManifestUrl);
             var manifest = JsonSerializer.Deserialize<UpdateManifest>(manifestJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (manifest is null || !Version.TryParse(manifest.Version, out var availableVersion)) return false;
+            if (manifest is null || !UpdateManifestSignature.Verify(manifest) ||
+                !Version.TryParse(manifest.Version, out var availableVersion)) return false;
 
             var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
             if (availableVersion <= currentVersion || !TryGetInstallerUri(manifest.InstallerUrl, out var installerUri))
@@ -50,8 +51,8 @@ internal static class UpdateService
     private static bool TryGetInstallerUri(string value, out Uri installerUri)
     {
         if (Uri.TryCreate(value, UriKind.Absolute, out var parsed) && parsed.Scheme == Uri.UriSchemeHttps &&
-            (parsed.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-             parsed.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase)))
+            parsed.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
+            parsed.AbsolutePath.StartsWith("/Sing2236/GlassBar/releases/download/", StringComparison.OrdinalIgnoreCase))
         {
             installerUri = parsed;
             return true;
