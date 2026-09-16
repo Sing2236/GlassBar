@@ -16,6 +16,8 @@ public sealed class BarSettings
     public string Accent { get; set; } = "#7DD3FC";
     public double BarWidth { get; set; } = 980;
     public double BarHeight { get; set; } = 68;
+    public double TopBarWidth { get; set; }
+    public double TopBarHeight { get; set; } = 54;
     public double CornerRadius { get; set; } = 22;
     public CustomEffectConfig CustomEffect { get; set; } = new();
     public List<StickerConfig> Stickers { get; set; } = [];

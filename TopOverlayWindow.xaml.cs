@@ -12,20 +12,24 @@ namespace GlassBar;
 
 public partial class TopOverlayWindow : Window
 {
+    private readonly BarSettings _settings;
     private readonly SystemMetricsService _metrics = new();
     private readonly DispatcherTimer _timer;
     private DateTime? _focusEndsAt;
+    private bool _applyingSize;
 
     public TopOverlayWindow(BarSettings settings)
     {
         InitializeComponent();
-        ApplyConfiguration(settings);
+        _settings = settings;
+        ApplyConfiguration(settings, fitToWidgets: false);
         _metrics.CpuPercent();
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) => RefreshWidgets();
         Closed += OnClosed;
         Loaded += (_, _) => { PositionAtTop(); RenderTopStickers(); };
         SizeChanged += (_, _) => RenderTopStickers();
+        SizeChanged += OnUserResize;
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
         RefreshWidgets();
         _timer.Start();
@@ -56,7 +60,7 @@ public partial class TopOverlayWindow : Window
         if (IsLoaded) RenderTopStickers(settings.TopStickers);
     }
 
-    public void ApplyConfiguration(BarSettings settings)
+    public void ApplyConfiguration(BarSettings settings, bool fitToWidgets = true)
     {
         ApplyAppearance(settings);
         ClockWidget.Visibility = settings.TopShowClock ? Visibility.Visible : Visibility.Collapsed;
@@ -64,14 +68,43 @@ public partial class TopOverlayWindow : Window
         ConnectionWidget.Visibility = settings.TopShowConnection ? Visibility.Visible : Visibility.Collapsed;
         PowerWidget.Visibility = settings.TopShowPower ? Visibility.Visible : Visibility.Collapsed;
         FocusWidget.Visibility = settings.TopShowFocus ? Visibility.Visible : Visibility.Collapsed;
+        PositionAtTop(fitToWidgets);
         RenderTopStickers(settings.TopStickers);
     }
 
-    private void PositionAtTop()
+    private void PositionAtTop(bool fitToWidgets = false)
     {
-        Width = Math.Min(760, Math.Max(520, SystemParameters.PrimaryScreenWidth - 32));
+        _applyingSize = true;
+        var maxWidth = Math.Max(280, SystemParameters.PrimaryScreenWidth - 32);
+        if (fitToWidgets || _settings.TopBarWidth <= 0)
+            Width = Math.Clamp(CalculateWidgetWidth(), 280, Math.Min(900, maxWidth));
+        else
+            Width = Math.Clamp(_settings.TopBarWidth, 280, Math.Min(1600, maxWidth));
+        if (fitToWidgets)
+            _settings.TopBarWidth = Width;
+        Height = Math.Clamp(_settings.TopBarHeight, 46, 120);
         Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
         Top = 8;
+        _applyingSize = false;
+    }
+
+    private double CalculateWidgetWidth()
+    {
+        var width = 28d; // surface and panel breathing room
+        if (ClockWidget.Visibility == Visibility.Visible) width += 92;
+        if (PerformanceWidget.Visibility == Visibility.Visible) width += 132;
+        if (ConnectionWidget.Visibility == Visibility.Visible) width += 106;
+        if (PowerWidget.Visibility == Visibility.Visible) width += 125;
+        if (FocusWidget.Visibility == Visibility.Visible) width += 131;
+        return width;
+    }
+
+    private void OnUserResize(object? sender, SizeChangedEventArgs e)
+    {
+        if (_applyingSize || !IsLoaded) return;
+        _settings.TopBarWidth = Width;
+        _settings.TopBarHeight = Height;
+        new SettingsService().Save(_settings);
     }
 
     private void RefreshWidgets()
