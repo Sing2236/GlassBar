@@ -309,7 +309,8 @@ public partial class MainWindow : Window
 
     private void ApplySettings()
     {
-        var premiumEffectReset = !_licenseService.IsPro && IsPremiumEffect(_settings.Effect);
+        var importedCommunityAnimation = _settings.Effect == "Custom" && _settings.CommunityAnimationActive;
+        var premiumEffectReset = !_licenseService.IsPro && IsPremiumEffect(_settings.Effect) && !importedCommunityAnimation;
         var premiumFeatureReset = false;
         if (premiumEffectReset) _settings.Effect = "Rain";
         if (!_licenseService.IsPro)
@@ -623,6 +624,7 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: string effect }) return;
         if (IsPremiumEffect(effect) && !EnsurePro(effect)) return;
         _settings.Effect = effect;
+        _settings.CommunityAnimationActive = false;
         EffectsLayer.Mode = effect;
         CustomEffectPanel.Visibility = effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         _topOverlay?.ApplyAppearance(_settings);
@@ -647,6 +649,7 @@ public partial class MainWindow : Window
     {
         if (!EnsurePro("Custom Effect Lab")) return;
         _settings.Effect = "Custom";
+        _settings.CommunityAnimationActive = false;
         EffectsLayer.CustomEffect = _settings.CustomEffect;
         EffectsLayer.Mode = "Custom";
         EffectsLayer.RefreshCustomEffect(rebuildParticles);

@@ -210,12 +210,27 @@ public sealed class AmbientEffect : FrameworkElement
             var color = particle.Variant ? _accent : second;
             var size = 1 + CustomEffect.Size * 5.5 * particle.Size;
             var alpha = (byte)Math.Clamp(55 + 150 * particle.Opacity * Intensity, 0, 255);
-            if (CustomEffect.Glow > 0.05)
+            if (CustomEffect.Shape != "Line" && CustomEffect.Glow > 0.05)
                 DrawGlow(dc, new Point(particle.X, particle.Y), color, size * (1.8 + 2.5 * CustomEffect.Glow), CustomEffect.Glow * .5);
 
             var brush = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
             switch (CustomEffect.Shape)
             {
+                case "Line":
+                    var lineTrail = size * (1.2 + 4 * CustomEffect.Trail);
+                    var lineStart = new Point(particle.X - lineTrail * .17, particle.Y - lineTrail);
+                    var lineEnd = new Point(particle.X, particle.Y);
+                    var glowAlpha = (byte)Math.Clamp(95 * CustomEffect.Glow * Intensity, 0, 255);
+                    var glowPen = new Pen(new SolidColorBrush(Color.FromArgb(glowAlpha, second.R, second.G, second.B)),
+                        Math.Max(1.8, size * .95)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    dc.DrawLine(glowPen, lineStart, lineEnd);
+                    var lineBrush = new LinearGradientBrush(
+                        Color.FromArgb(5, _accent.R, _accent.G, _accent.B),
+                        Color.FromArgb(alpha, _accent.R, _accent.G, _accent.B), 90);
+                    var linePen = new Pen(lineBrush, Math.Max(1.2, size * .62))
+                        { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    dc.DrawLine(linePen, lineStart, lineEnd);
+                    break;
                 case "Spark":
                     var sparkPen = new Pen(brush, Math.Max(0.8, size * .22)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
                     dc.DrawLine(sparkPen, new Point(particle.X - size, particle.Y), new Point(particle.X + size, particle.Y));

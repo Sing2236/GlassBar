@@ -63,6 +63,7 @@ public sealed class CommunityDesignService
         settings.Opacity = Math.Clamp(GetDouble(bar, "opacity", settings.Opacity * 100) / 100, .05, 1);
         settings.BackgroundVisible = GetString(bar, "backgroundMode", "glass") != "transparent";
         settings.Effect = GetString(bar, "effectMode", "ambient") == "none" ? "Off" : "Rain";
+        settings.CommunityAnimationActive = false;
         settings.Shadow = Math.Clamp(GetDouble(bar, "shadow", settings.Shadow), 0, 80);
         var accent = GetString(bar, "accent", settings.Accent);
         if (HexColor.IsMatch(accent)) settings.Accent = accent;
@@ -80,6 +81,7 @@ public sealed class CommunityDesignService
     {
         if (!root.TryGetProperty("animation", out var animation)) return false;
         settings.Effect = "Custom";
+        settings.CommunityAnimationActive = true;
         settings.CustomEffect.Name = GetString(animation, "name", "Community effect")[..Math.Min(GetString(animation, "name", "Community effect").Length, 40)];
         settings.CustomEffect.Shape = GetString(animation, "shape", "orb") switch { "line" => "Line", "spark" => "Spark", _ => "Orb" };
         settings.CustomEffect.Motion = GetString(animation, "motion", "drift") switch { "fall" => "Fall", "rise" => "Rise", _ => "Drift" };
