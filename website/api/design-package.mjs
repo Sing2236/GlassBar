@@ -1,3 +1,4 @@
+// Public package lookup for the desktop glassbar:// importer.
 const seedPackages = {
   midnight: { kind: "glassbar", metadata: { name: "Midnight Current", summary: "Deep blue glass with a cool cyan edge.", tags: ["dark", "blue"] }, glassbar: { backgroundStart: "#0f2636", backgroundEnd: "#11141d", accent: "#64ddff", opacity: 91, radius: 24 } },
   paper: { kind: "glassbar", metadata: { name: "Paper Glass", summary: "A bright, quiet bar for light desktops.", tags: ["light", "minimal"] }, glassbar: { backgroundStart: "#edf7fb", backgroundEnd: "#cbd8e3", accent: "#1688c8", opacity: 78 } },
@@ -7,7 +8,7 @@ const seedPackages = {
   embers: { kind: "animation", metadata: { name: "Quiet Embers", summary: "Warm rising particles.", tags: ["warm", "particles"] }, animation: { name: "Quiet Embers", shape: "orb", motion: "rise", density: 35, speed: 29, size: 42, glow: 62, trail: 40, primaryColor: "#fb923c", secondaryColor: "#fde68a" } }
 };
 
-module.exports = async function handler(request, response) {
+export default async function handler(request, response) {
   response.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
   if (request.method !== "GET") return response.status(405).json({ error: "Method not allowed." });
   const id = String(request.query?.id || "").slice(0, 100);

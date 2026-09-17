@@ -1,5 +1,5 @@
-const crypto = require("node:crypto");
-const { scanWidget } = require("./lib/widgetSecurity");
+import crypto from "node:crypto";
+import { scanWidget } from "./_lib/widgetSecurity.mjs";
 
 function slugify(value) {
   return String(value || "widget").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "widget";
@@ -27,7 +27,7 @@ async function supabaseRequest(path, { token, serviceKey, method = "GET", body, 
   });
 }
 
-module.exports = async function handler(request, response) {
+export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
   const bearer = request.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
