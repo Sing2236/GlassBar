@@ -38,6 +38,7 @@ public sealed class BarSettings
     public double TopBarHeight { get; set; } = 54;
     public double CornerRadius { get; set; } = 22;
     public CustomEffectConfig CustomEffect { get; set; } = new();
+    public bool CommunityAnimationActive { get; set; }
     public List<StickerConfig> Stickers { get; set; } = [];
     public List<StickerConfig> TopStickers { get; set; } = [];
     public List<PinnedAppConfig> PinnedApps { get; set; } = [];
