@@ -26,7 +26,9 @@ if ($Mode -eq 'Fullscreen') {
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
 } else {
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
-    $form.WindowState = [System.Windows.Forms.FormWindowState]::Maximized
+    # Keep a captioned desktop window at full monitor bounds. This reproduces
+    # maximized Chrome after GlassBar hides the native Windows taskbar.
+    $form.Bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 }
 
 $form.Add_Shown({

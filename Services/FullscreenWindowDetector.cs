@@ -33,7 +33,17 @@ internal static class FullscreenWindowDetector
         };
         if (!NativeMethods.GetMonitorInfo(monitor, ref monitorInfo)) return false;
 
-        return EdgesMatch(windowRect, monitorInfo.Monitor);
+        var style = NativeMethods.GetWindowLongPtr(foreground, NativeMethods.GWL_STYLE).ToInt64();
+        return IsFullscreenCandidate(style, windowRect, monitorInfo.Monitor);
+    }
+
+    internal static bool IsFullscreenCandidate(long style, NativeMethods.NativeRect window, NativeMethods.NativeRect monitor)
+    {
+        // A maximized desktop window can cover the entire monitor after the
+        // native taskbar is hidden. It is still a normal captioned window and
+        // should not be treated like a borderless fullscreen app or game.
+        if ((style & NativeMethods.WS_CAPTION) == NativeMethods.WS_CAPTION) return false;
+        return EdgesMatch(window, monitor);
     }
 
     private static bool IsShellSurface(nint window)
