@@ -28,10 +28,10 @@
   <Border x:Name="TopSurface" Margin="4" CornerRadius="18"
           Background="{DynamicResource TopGlassBackground}" BorderBrush="#30FFFFFF" BorderThickness="1"
           PreviewMouseLeftButtonDown="TopSurface_PreviewMouseLeftButtonDown">
-    <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.42" Color="#020617" /></Border.Effect>
+    <Border.Effect><DropShadowEffect x:Name="TopShadow" BlurRadius="24" ShadowDepth="4" Opacity="0.42" Color="#020617" /></Border.Effect>
     <Grid>
       <controls:AmbientEffect x:Name="TopEffectsLayer" />
-      <Rectangle VerticalAlignment="Top" Height="1" Margin="18,0" Fill="#70FFFFFF" Opacity="0.26" />
+      <Rectangle x:Name="TopHighlight" VerticalAlignment="Top" Height="1" Margin="18,0" Fill="#70FFFFFF" Opacity="0.26" />
       <StackPanel x:Name="TopWidgetsPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,6">
         <TextBlock x:Name="TopDragHandle" Text="&#xE76F;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="#68FFFFFF"
                    Width="20" VerticalAlignment="Center" TextAlignment="Center" ToolTip="Drag widget bar" Cursor="SizeAll" />

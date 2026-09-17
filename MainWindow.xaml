@@ -363,6 +363,13 @@
           </StackPanel>
 
           <Grid Margin="0,18,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Bar background" FontWeight="SemiBold" /><TextBlock Text="Keep effects on transparent glass" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="BackgroundVisibleCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                      Click="BackgroundVisibleCheck_Click" AutomationProperties.AutomationId="BackgroundVisible" />
+          </Grid>
+
+          <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Glass opacity" FontWeight="SemiBold" /><TextBlock Text="Background transparency" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <Slider x:Name="OpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.30" Maximum="0.98" VerticalAlignment="Center" ValueChanged="OpacitySlider_ValueChanged" AutomationProperties.AutomationId="OpacitySlider" />
@@ -567,10 +574,10 @@
 
     <Border x:Name="BarSurface" Grid.Row="1" Margin="4,0,4,4" CornerRadius="22"
             BorderBrush="#30FFFFFF" BorderThickness="1" Background="{DynamicResource GlassBackground}" ClipToBounds="True">
-      <Border.Effect><DropShadowEffect BlurRadius="28" Opacity="0.48" ShadowDepth="5" Color="#020617" /></Border.Effect>
+      <Border.Effect><DropShadowEffect x:Name="BarShadow" BlurRadius="28" Opacity="0.48" ShadowDepth="5" Color="#020617" /></Border.Effect>
       <Grid>
         <controls:AmbientEffect x:Name="EffectsLayer" />
-        <Rectangle VerticalAlignment="Top" Height="1" Fill="#70FFFFFF" Opacity="0.28" />
+        <Rectangle x:Name="BarHighlight" VerticalAlignment="Top" Height="1" Fill="#70FFFFFF" Opacity="0.28" />
         <Grid x:Name="BarContentGrid" Margin="10,7">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />

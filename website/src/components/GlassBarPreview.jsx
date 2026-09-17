@@ -1,3 +1,5 @@
+import SandboxedWidgetPreview from "./SandboxedWidgetPreview";
+
 const moduleLabels = {
   start: "start",
   search: "Search",
@@ -35,6 +37,7 @@ function Particles({ animation }) {
 }
 
 function WidgetPreview({ widget }) {
+  if (widget.mode === "code") return <SandboxedWidgetPreview code={widget.code} />;
   return (
     <div className="preview-widget" style={{
       width: widget.width,
@@ -55,18 +58,17 @@ export default function GlassBarPreview({ design, label = "GlassBar design previ
     width: vertical ? Math.min(90, glassbar.height + 12) : glassbar.width,
     height: vertical ? Math.min(500, glassbar.width * .62) : glassbar.height,
     borderRadius: glassbar.radius,
-    opacity: glassbar.opacity / 100,
-    background: `linear-gradient(135deg, ${glassbar.backgroundStart}, ${glassbar.backgroundEnd})`,
-    borderColor: `${glassbar.border}99`,
-    boxShadow: `0 ${Math.round(glassbar.shadow / 2)}px ${glassbar.shadow}px rgba(21,34,52,.2)`,
-    backdropFilter: `blur(${glassbar.blur}px) saturate(150%)`,
+    background: glassbar.backgroundMode === "transparent" ? "transparent" : `linear-gradient(135deg, color-mix(in srgb, ${glassbar.backgroundStart} ${glassbar.opacity}%, transparent), color-mix(in srgb, ${glassbar.backgroundEnd} ${glassbar.opacity}%, transparent))`,
+    borderColor: glassbar.backgroundMode === "transparent" ? "transparent" : `${glassbar.border}99`,
+    boxShadow: glassbar.backgroundMode === "transparent" ? "none" : `0 ${Math.round(glassbar.shadow / 2)}px ${glassbar.shadow}px rgba(21,34,52,.2)`,
+    backdropFilter: glassbar.backgroundMode === "transparent" ? "none" : `blur(${glassbar.blur}px) saturate(150%)`,
     "--preview-accent": glassbar.accent
   };
 
   return (
     <div className={`preview-stage ${compact ? "is-compact" : ""}`} aria-label={label}>
       <div className={`preview-bar ${vertical ? "is-vertical" : ""}`} style={style}>
-        {(kind === "animation" || kind === "glassbar") && <Particles animation={animation} />}
+        {(kind === "animation" || (kind === "glassbar" && glassbar.effectMode !== "none")) && <Particles animation={animation} />}
         {kind === "widget" ? <WidgetPreview widget={widget} /> : glassbar.modules.map((module) => {
           if (module === "start") return <StartMark key={module} />;
           if (module === "apps") return <Apps key={module} />;

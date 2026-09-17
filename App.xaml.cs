@@ -1,5 +1,7 @@
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
 using System.Windows;
 using System.Windows.Threading;
 using GlassBar.Services;
@@ -12,6 +14,8 @@ public partial class App : Application
     private bool _ownsMutex;
     private DispatcherTimer? _updateTimer;
     private int _updateCheckRunning;
+    private CancellationTokenSource? _commandListenerCancellation;
+    private const string CommandPipe = "GlassBar.DesignCommands.v1";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -21,6 +25,8 @@ public partial class App : Application
         _ownsMutex = createdNew;
         if (!createdNew)
         {
+            var command = e.Args.FirstOrDefault(arg => arg.StartsWith("glassbar:", StringComparison.OrdinalIgnoreCase));
+            if (command is not null) SendCommandToPrimary(command);
             Shutdown();
             return;
         }
@@ -38,17 +44,57 @@ public partial class App : Application
         StartWatchdog();
         var safeMode = e.Args.Contains("--safe", StringComparer.OrdinalIgnoreCase);
         var keepVisibleForUiTests = e.Args.Contains("--qa-visible", StringComparer.OrdinalIgnoreCase);
-        new MainWindow(safeMode, keepVisibleForUiTests).Show();
+        var window = new MainWindow(safeMode, keepVisibleForUiTests);
+        window.Show();
+        StartCommandListener(window);
+        var initialCommand = e.Args.FirstOrDefault(arg => arg.StartsWith("glassbar:", StringComparison.OrdinalIgnoreCase));
+        if (initialCommand is not null) Dispatcher.BeginInvoke(async () => await window.ImportCommunityDesignAsync(initialCommand));
         if (!safeMode) StartAutomaticUpdates();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         _updateTimer?.Stop();
+        _commandListenerCancellation?.Cancel();
         NativeTaskbar.Show();
         if (_ownsMutex) _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();
         base.OnExit(e);
+    }
+
+    private void StartCommandListener(MainWindow window)
+    {
+        _commandListenerCancellation = new CancellationTokenSource();
+        _ = Task.Run(async () =>
+        {
+            while (!_commandListenerCancellation.IsCancellationRequested)
+            {
+                try
+                {
+                    await using var pipe = new NamedPipeServerStream(CommandPipe, PipeDirection.In, 1,
+                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    await pipe.WaitForConnectionAsync(_commandListenerCancellation.Token);
+                    using var reader = new StreamReader(pipe);
+                    var command = await reader.ReadToEndAsync(_commandListenerCancellation.Token);
+                    if (command.StartsWith("glassbar:", StringComparison.OrdinalIgnoreCase))
+                        await Dispatcher.InvokeAsync(async () => await window.ImportCommunityDesignAsync(command)).Task.Unwrap();
+                }
+                catch (OperationCanceledException) { break; }
+                catch { }
+            }
+        });
+    }
+
+    private static void SendCommandToPrimary(string command)
+    {
+        try
+        {
+            using var pipe = new NamedPipeClientStream(".", CommandPipe, PipeDirection.Out);
+            pipe.Connect(2000);
+            using var writer = new StreamWriter(pipe) { AutoFlush = true };
+            writer.Write(command);
+        }
+        catch { }
     }
 
     private bool TryRunWatchdog(string[] args)
