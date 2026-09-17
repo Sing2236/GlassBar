@@ -1,6 +1,6 @@
-const { scanWidget } = require("./lib/widgetSecurity");
+import { scanWidget } from "./_lib/widgetSecurity.mjs";
 
-module.exports = async function handler(request, response) {
+export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
   try {

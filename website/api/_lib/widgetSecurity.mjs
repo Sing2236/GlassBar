@@ -1,3 +1,4 @@
+// This module is private support code, not a public Vercel route.
 const LIMITS = { html: 20_000, css: 30_000, js: 50_000 };
 
 const rules = [
@@ -85,4 +86,4 @@ async function scanWidget(code) {
   };
 }
 
-module.exports = { LIMITS, staticScan, ollamaScan, scanWidget };
+export { LIMITS, staticScan, ollamaScan, scanWidget };
