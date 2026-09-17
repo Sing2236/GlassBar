@@ -28,6 +28,10 @@ public sealed class BarSettings
     public double EffectIntensity { get; set; } = 0.72;
     public string Effect { get; set; } = "Rain";
     public string Accent { get; set; } = "#7DD3FC";
+    public string BackgroundStart { get; set; } = "#111722";
+    public string BackgroundEnd { get; set; } = "#111722";
+    public string Border { get; set; } = "#FFFFFF";
+    public double Shadow { get; set; } = 36;
     public double BarWidth { get; set; } = 980;
     public double BarHeight { get; set; } = 68;
     public double TopBarWidth { get; set; }

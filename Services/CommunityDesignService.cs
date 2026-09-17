@@ -63,8 +63,15 @@ public sealed class CommunityDesignService
         settings.Opacity = Math.Clamp(GetDouble(bar, "opacity", settings.Opacity * 100) / 100, .05, 1);
         settings.BackgroundVisible = GetString(bar, "backgroundMode", "glass") != "transparent";
         settings.Effect = GetString(bar, "effectMode", "ambient") == "none" ? "Off" : "Rain";
+        settings.Shadow = Math.Clamp(GetDouble(bar, "shadow", settings.Shadow), 0, 80);
         var accent = GetString(bar, "accent", settings.Accent);
         if (HexColor.IsMatch(accent)) settings.Accent = accent;
+        var backgroundStart = GetString(bar, "backgroundStart", settings.BackgroundStart);
+        if (HexColor.IsMatch(backgroundStart)) settings.BackgroundStart = backgroundStart;
+        var backgroundEnd = GetString(bar, "backgroundEnd", settings.BackgroundEnd);
+        if (HexColor.IsMatch(backgroundEnd)) settings.BackgroundEnd = backgroundEnd;
+        var border = GetString(bar, "border", settings.Border);
+        if (HexColor.IsMatch(border)) settings.Border = border;
         if (root.TryGetProperty("animation", out _)) ApplyAnimation(root, settings);
         return true;
     }
