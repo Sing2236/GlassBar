@@ -22,16 +22,19 @@ internal static class UpdateService
             var manifestJson = await Client.GetStringAsync(ManifestUrl);
             var manifest = JsonSerializer.Deserialize<UpdateManifest>(manifestJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (manifest is null || !UpdateManifestSignature.Verify(manifest) ||
-                !Version.TryParse(manifest.Version, out var availableVersion)) return false;
+            if (manifest is null) throw new InvalidDataException("The update manifest is empty.");
+            if (!UpdateManifestSignature.Verify(manifest))
+                throw new CryptographicException("The update manifest signature is invalid.");
+            if (!Version.TryParse(manifest.Version, out var availableVersion))
+                throw new InvalidDataException("The update manifest version is invalid.");
 
             var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
-            if (availableVersion <= currentVersion || !TryGetInstallerUri(manifest.InstallerUrl, out var installerUri))
-                return false;
+            if (availableVersion <= currentVersion) return false;
+            if (!TryGetInstallerUri(manifest.InstallerUrl, out var installerUri))
+                throw new InvalidDataException("The update installer URL is not trusted.");
 
             var installerPath = await DownloadAndVerifyAsync(installerUri, availableVersion, manifest.Sha256);
-            if (installerPath is null) return false;
-
+            LogStatus($"Update {availableVersion} downloaded and verified. Starting the installer.");
             return LaunchUpdateBootstrap(installerPath);
         }
         catch (Exception exception)
@@ -62,9 +65,10 @@ internal static class UpdateService
         return false;
     }
 
-    private static async Task<string?> DownloadAndVerifyAsync(Uri installerUri, Version version, string expectedSha256)
+    private static async Task<string> DownloadAndVerifyAsync(Uri installerUri, Version version, string expectedSha256)
     {
-        if (expectedSha256.Length != 64 || expectedSha256.Any(character => !Uri.IsHexDigit(character))) return null;
+        if (expectedSha256.Length != 64 || expectedSha256.Any(character => !Uri.IsHexDigit(character)))
+            throw new InvalidDataException("The update checksum is invalid.");
 
         var updateFolder = Path.Combine(Path.GetTempPath(), "GlassBar", "updates");
         Directory.CreateDirectory(updateFolder);
@@ -85,7 +89,7 @@ internal static class UpdateService
             if (!actualSha256.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
             {
                 File.Delete(partialPath);
-                return null;
+                throw new CryptographicException("The downloaded installer checksum does not match the signed manifest.");
             }
         }
 
@@ -95,16 +99,36 @@ internal static class UpdateService
 
     private static bool LaunchUpdateBootstrap(string installerPath)
     {
-        var installedExecutable = Path.Combine(
+        var defaultExecutable = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Programs", "GlassBar", "GlassBar.exe");
-        var escapedInstaller = installerPath.Replace("'", "''");
-        var escapedExecutable = installedExecutable.Replace("'", "''");
-        var script = $"Wait-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; " +
-                     $"$setup = Start-Process -FilePath '{escapedInstaller}' " +
-                     "-ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CLOSEAPPLICATIONS' " +
-                     "-WindowStyle Hidden -Wait -PassThru; " +
-                     $"if ($setup.ExitCode -eq 0) {{ Start-Process -FilePath '{escapedExecutable}' }}";
+        var currentExecutable = Environment.ProcessPath ?? defaultExecutable;
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlassBar", "update.log");
+        var escapedInstaller = EscapePowerShellLiteral(installerPath);
+        var escapedExecutable = EscapePowerShellLiteral(currentExecutable);
+        var escapedLogPath = EscapePowerShellLiteral(logPath);
+        var script =
+            "$ErrorActionPreference = 'Stop'; " +
+            $"$logPath = '{escapedLogPath}'; " +
+            "function Write-UpdateLog([string]$message) { Add-Content -LiteralPath $logPath -Value ((Get-Date).ToString('o') + ' ' + $message) }; " +
+            $"$fallbackExecutable = '{escapedExecutable}'; " +
+            $"Wait-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; " +
+            "Get-Process -Name 'GlassBar' -ErrorAction SilentlyContinue | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue; " +
+            "try { " +
+            $"$setup = Start-Process -FilePath '{escapedInstaller}' " +
+            "-ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CLOSEAPPLICATIONS','/FORCECLOSEAPPLICATIONS' " +
+            "-WindowStyle Hidden -Wait -PassThru; " +
+            "if ($setup.ExitCode -ne 0) { throw ('Installer exited with code ' + $setup.ExitCode) }; " +
+            "$installKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{5E1D5A44-7E7B-4EA0-9C4B-6715C67B19C4}_is1'; " +
+            "$installLocation = (Get-ItemProperty -LiteralPath $installKey -ErrorAction SilentlyContinue).InstallLocation; " +
+            "$installedExecutable = if ($installLocation) { Join-Path $installLocation 'GlassBar.exe' } else { $fallbackExecutable }; " +
+            "if (-not (Test-Path -LiteralPath $installedExecutable)) { throw 'The installed GlassBar executable was not found.' }; " +
+            "Write-UpdateLog ('Update installed successfully. Launching ' + $installedExecutable); " +
+            "Start-Process -FilePath $installedExecutable " +
+            "} catch { " +
+            "Write-UpdateLog ('Update bootstrap failed: ' + $_.Exception.Message); " +
+            "if (Test-Path -LiteralPath $fallbackExecutable) { Start-Process -FilePath $fallbackExecutable }; exit 1 }";
         var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
 
         var startInfo = new ProcessStartInfo("powershell.exe")
@@ -122,7 +146,12 @@ internal static class UpdateService
         return Process.Start(startInfo) is not null;
     }
 
+    private static string EscapePowerShellLiteral(string value) => value.Replace("'", "''");
+
     private static void LogFailure(Exception exception)
+        => LogStatus($"{exception.GetType().Name}: {exception.Message}");
+
+    private static void LogStatus(string message)
     {
         try
         {
@@ -130,7 +159,7 @@ internal static class UpdateService
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlassBar");
             Directory.CreateDirectory(folder);
             File.AppendAllText(Path.Combine(folder, "update.log"),
-                $"{DateTimeOffset.Now:O} {exception.GetType().Name}: {exception.Message}{Environment.NewLine}");
+                $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
         }
         catch { }
     }

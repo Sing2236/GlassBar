@@ -576,7 +576,8 @@ public partial class MainWindow : Window
     private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source) return;
-        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, SettingsButton))
+        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, SettingsButton)
+            && !IsStickerInteraction(source))
             SetSettingsOpen(false);
         if (_backgroundProcessesOpen && !IsWithin(source, BackgroundProcessesPanel) && !IsWithin(source, BarSurface))
             SetBackgroundProcessesOpen(false);
@@ -586,6 +587,13 @@ public partial class MainWindow : Window
     {
         for (var current = source; current is not null; current = GetParent(current))
             if (ReferenceEquals(current, container)) return true;
+        return false;
+    }
+
+    private static bool IsStickerInteraction(DependencyObject source)
+    {
+        for (var current = source; current is not null; current = GetParent(current))
+            if (current is Border { Tag: StickerConfig }) return true;
         return false;
     }
 
