@@ -347,6 +347,9 @@ public partial class MainWindow : Window
         AltTabEnabledCheck.IsChecked = _settings.AltTabEnabled;
         AltTabOptionsPanel.Visibility = _settings.AltTabEnabled ? Visibility.Visible : Visibility.Collapsed;
         AltTabOpacitySlider.Value = _settings.AltTabOpacity;
+        AltTabBackgroundImageText.Text = string.IsNullOrWhiteSpace(_settings.AltTabBackgroundImage)
+            ? "No image selected"
+            : $"Image: {Path.GetFileName(_settings.AltTabBackgroundImage)}";
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         HideInFullscreenCheck.IsChecked = _settings.HideInFullscreenApps;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
@@ -482,7 +485,9 @@ public partial class MainWindow : Window
     private static T? GetContextItem<T>(object sender) where T : class
     {
         if (sender is FrameworkElement { DataContext: T direct }) return direct;
-        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: T placed } } }) return placed;
+        if (sender is MenuItem menuItem &&
+            ItemsControl.ItemsControlFromItemContainer(menuItem) is ContextMenu
+            { PlacementTarget: FrameworkElement { DataContext: T placed } }) return placed;
         return null;
     }
 
@@ -1189,6 +1194,37 @@ public partial class MainWindow : Window
             background is not ("Glass" or "Dark" or "Transparent")) return;
         _settings.AltTabBackground = background;
         SaveSettings();
+    }
+
+    private void AltTabLayout_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string layout } || layout is not ("Compact" or "Fullscreen")) return;
+        _settings.AltTabLayout = layout;
+        SaveSettings();
+    }
+
+    private void ChooseAltTabBackground_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose an Alt + Tab background",
+            Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            _settings.AltTabBackgroundImage = BackgroundImageService.Import(dialog.FileName);
+            _settings.AltTabBackground = "Image";
+            AltTabBackgroundImageText.Text = $"Image: {Path.GetFileName(_settings.AltTabBackgroundImage)}";
+            SaveSettings();
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, $"GlassBar could not use that image.\n\n{exception.Message}", "Background import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void AltTabOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

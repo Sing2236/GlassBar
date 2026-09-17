@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using GlassBar.Models;
 using GlassBar.Services;
 
@@ -27,7 +30,7 @@ public partial class AltTabWindow : Window
         if (_items.Count == 0) return false;
 
         ApplyAppearance(settings);
-        SizeToFilmstrip();
+        ApplyLayout(settings);
         var activeIndex = _items.Select((item, index) => (item, index)).FirstOrDefault(pair => pair.item.IsActive).index;
         if (!_items.Any(item => item.IsActive)) activeIndex = reverse ? 0 : _items.Count - 1;
         WindowList.SelectedIndex = Wrap(activeIndex + (reverse ? -1 : 1));
@@ -66,7 +69,11 @@ public partial class AltTabWindow : Window
             Cancel();
             return;
         }
-        HideAnimated(() => _windowService.Activate(selected));
+
+        // Activate while handling the Alt release. Waiting for the fade to finish
+        // lets Windows' foreground-lock window expire and can leave the old app active.
+        _windowService.Activate(selected);
+        HideAnimated(null);
     }
 
     public void Cancel() => HideAnimated(null);
@@ -78,6 +85,7 @@ public partial class AltTabWindow : Window
         var alpha = (byte)Math.Round(Math.Clamp(settings.AltTabOpacity, 0.2, 1) * 255);
         SwitcherSurface.Background = settings.AltTabBackground switch
         {
+            "Image" when TryCreateBackgroundImage(settings.AltTabBackgroundImage, settings.AltTabOpacity) is { } image => image,
             "Dark" => new SolidColorBrush(Color.FromArgb(alpha, 5, 9, 16)),
             "Transparent" => new SolidColorBrush(Color.FromArgb((byte)Math.Min((int)alpha, 62), 41, 57, 66)),
             _ => new SolidColorBrush(Color.FromArgb(alpha, 92, 114, 128))
@@ -95,13 +103,39 @@ public partial class AltTabWindow : Window
         Top = work.Top + (work.Height - ActualHeight) / 2;
     }
 
-    private void SizeToFilmstrip()
+    private void ApplyLayout(BarSettings settings)
     {
         const double cardWidth = 148;
         const double chrome = 22;
         var work = SystemParameters.WorkArea;
-        Width = Math.Min(work.Width - 24, _items.Count * cardWidth + chrome);
-        Height = Math.Min(252, work.Height - 24);
+        var fullScreen = settings.AltTabLayout == "Fullscreen";
+        Width = fullScreen ? work.Width : Math.Min(work.Width - 24, _items.Count * cardWidth + chrome);
+        Height = fullScreen ? work.Height : Math.Min(252, work.Height - 24);
+        WindowList.Width = Math.Min(work.Width - (fullScreen ? 48 : 22), _items.Count * cardWidth);
+        SwitcherSurface.Padding = new Thickness(fullScreen ? 24 : 10);
+        SwitcherSurface.CornerRadius = new CornerRadius(fullScreen ? 0 : 5);
+    }
+
+    private static ImageBrush? TryCreateBackgroundImage(string? path, double opacity)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.UriSource = new Uri(path, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+            return new ImageBrush(image)
+            {
+                Stretch = Stretch.UniformToFill,
+                AlignmentX = AlignmentX.Center,
+                AlignmentY = AlignmentY.Center,
+                Opacity = Math.Clamp(opacity, 0.2, 1)
+            };
+        }
+        catch { return null; }
     }
 
     private void AnimateOpen()
@@ -144,5 +178,25 @@ public partial class AltTabWindow : Window
         }
         WindowList.SelectedIndex = Math.Min(Math.Max(0, oldIndex), _items.Count - 1);
         WindowList.ScrollIntoView(WindowList.SelectedItem);
+    }
+
+    private void WindowList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        for (var current = e.OriginalSource as DependencyObject; current is not null; current = GetParent(current))
+        {
+            if (current is Button) return;
+            if (current is not ListBoxItem { DataContext: AppItem item }) continue;
+
+            WindowList.SelectedItem = item;
+            e.Handled = true;
+            CompleteSelection();
+            return;
+        }
+    }
+
+    private static DependencyObject? GetParent(DependencyObject child)
+    {
+        try { return VisualTreeHelper.GetParent(child); }
+        catch (InvalidOperationException) { return LogicalTreeHelper.GetParent(child); }
     }
 }

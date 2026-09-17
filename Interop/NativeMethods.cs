@@ -104,6 +104,18 @@ internal static class NativeMethods
     internal static extern bool SetForegroundWindow(nint hWnd);
 
     [DllImport("user32.dll")]
+    internal static extern bool BringWindowToTop(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern uint GetWindowThreadProcessId(nint hWnd, nint processId);
+
+    [DllImport("user32.dll")]
+    internal static extern bool AttachThreadInput(uint attachThread, uint attachToThread, bool attach);
+
+    [DllImport("kernel32.dll")]
+    internal static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
     internal static extern bool ShowWindow(nint hWnd, int command);
 
     [DllImport("user32.dll")]

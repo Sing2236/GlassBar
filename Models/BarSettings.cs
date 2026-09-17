@@ -24,7 +24,9 @@ public sealed class BarSettings
     public double AudioVisualizerY { get; set; } = -1;
     public bool UseWindowsSearch { get; set; }
     public bool AltTabEnabled { get; set; } = true;
+    public string AltTabLayout { get; set; } = "Compact";
     public string AltTabBackground { get; set; } = "Glass";
+    public string? AltTabBackgroundImage { get; set; }
     public double AltTabOpacity { get; set; } = 0.92;
     public bool BackgroundVisible { get; set; } = true;
     public double Opacity { get; set; } = 0.82;

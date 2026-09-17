@@ -228,6 +228,7 @@
     </Style>
 
     <Style x:Key="GlassContextMenu" TargetType="ContextMenu">
+      <Setter Property="DataContext" Value="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" />
       <Setter Property="Foreground" Value="#F8FAFC" />
       <Setter Property="Background" Value="#F2111722" />
       <Setter Property="BorderBrush" Value="#48FFFFFF" />
@@ -523,19 +524,27 @@
           </Grid>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated vertical window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated visual window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="AltTabEnabledCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
                       Click="AltTabEnabledCheck_Click" AutomationProperties.AutomationId="AltTabEnabled" />
           </Grid>
           <Border x:Name="AltTabOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
                   Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
             <StackPanel>
+              <TextBlock Text="SWITCHER SIZE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,12">
+                <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="AltTabLayout_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Full screen" Tag="Fullscreen" Click="AltTabLayout_Click" />
+              </WrapPanel>
               <TextBlock Text="SWITCHER BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
               <WrapPanel Margin="0,8,0,4">
                 <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" Click="AltTabBackground_Click" />
                 <Button Style="{StaticResource ChoiceButton}" Content="Dark" Tag="Dark" Click="AltTabBackground_Click" />
                 <Button Style="{StaticResource ChoiceButton}" Content="Transparent" Tag="Transparent" Click="AltTabBackground_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Choose image" Click="ChooseAltTabBackground_Click" />
               </WrapPanel>
+              <TextBlock x:Name="AltTabBackgroundImageText" Margin="2,2,0,3" Text="No image selected"
+                         Foreground="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" />
               <Grid Margin="0,5,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
                 <TextBlock Text="Background opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
@@ -690,7 +699,8 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0">
+                  <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0"
+                          AutomationProperties.Name="{Binding Title}">
                     <Button.ContextMenu>
                       <ContextMenu Style="{StaticResource GlassContextMenu}">
                         <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
@@ -719,9 +729,9 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <StackPanel x:Name="AppPager" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
-              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76B;" FontFamily="Segoe MDL2 Assets" Click="PreviousAppsPage_Click" ToolTip="Previous apps" />
+              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76B;" FontFamily="Segoe MDL2 Assets" Click="PreviousAppsPage_Click" ToolTip="Previous apps" AutomationProperties.AutomationId="PreviousAppsPage" />
               <TextBlock x:Name="AppPageText" Text="1/1" Foreground="#AFC0D4" FontSize="9" VerticalAlignment="Center" Margin="2,0" />
-              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76C;" FontFamily="Segoe MDL2 Assets" Click="NextAppsPage_Click" ToolTip="Next apps" />
+              <Button Style="{StaticResource TinyButton}" Width="24" MinWidth="24" Padding="0" Content="&#xE76C;" FontFamily="Segoe MDL2 Assets" Click="NextAppsPage_Click" ToolTip="Next apps" AutomationProperties.AutomationId="NextAppsPage" />
             </StackPanel>
           </StackPanel>
 
