@@ -1,6 +1,6 @@
 #define MyAppName "GlassBar"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.4.3"
+  #define MyAppVersion "0.5.0"
 #endif
 #ifndef MyAppSourceDir
   #define MyAppSourceDir "..\release"
