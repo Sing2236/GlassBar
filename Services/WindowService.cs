@@ -97,10 +97,33 @@ public sealed class WindowService
         return windows;
     }
 
-    public void Activate(AppItem item)
+    public bool Activate(AppItem item)
     {
-        if (NativeMethods.IsIconic(item.Handle)) NativeMethods.ShowWindow(item.Handle, NativeMethods.SW_RESTORE);
-        NativeMethods.SetForegroundWindow(item.Handle);
+        if (item.Handle == nint.Zero) return false;
+
+        var currentThread = NativeMethods.GetCurrentThreadId();
+        var foregroundThread = NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), nint.Zero);
+        var targetThread = NativeMethods.GetWindowThreadProcessId(item.Handle, nint.Zero);
+        var attachedThreads = new List<uint>(2);
+
+        try
+        {
+            foreach (var thread in new[] { foregroundThread, targetThread }.Distinct())
+            {
+                if (thread != 0 && thread != currentThread &&
+                    NativeMethods.AttachThreadInput(currentThread, thread, true))
+                    attachedThreads.Add(thread);
+            }
+
+            if (NativeMethods.IsIconic(item.Handle)) NativeMethods.ShowWindow(item.Handle, NativeMethods.SW_RESTORE);
+            NativeMethods.BringWindowToTop(item.Handle);
+            return NativeMethods.SetForegroundWindow(item.Handle);
+        }
+        finally
+        {
+            for (var index = attachedThreads.Count - 1; index >= 0; index--)
+                NativeMethods.AttachThreadInput(currentThread, attachedThreads[index], false);
+        }
     }
 
     public bool CloseWindow(AppItem item) =>
