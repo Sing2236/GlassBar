@@ -47,6 +47,9 @@ internal static class NativeMethods
     internal const uint SHGFI_ICON = 0x000000100;
     internal const uint SHGFI_SMALLICON = 0x000000001;
     internal const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    internal const uint PW_RENDERFULLCONTENT = 0x00000002;
+    internal const uint SRCCOPY = 0x00CC0020;
+    internal const uint CAPTUREBLT = 0x40000000;
 
     internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
     internal delegate nint LowLevelKeyboardProc(int code, nint wParam, nint lParam);
@@ -105,6 +108,37 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern bool IsIconic(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern bool PrintWindow(nint hWnd, nint hdcBlt, uint flags);
+
+    [DllImport("user32.dll")]
+    internal static extern nint GetDC(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern nint GetWindowDC(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern int ReleaseDC(nint hWnd, nint hdc);
+
+    [DllImport("gdi32.dll")]
+    internal static extern nint CreateCompatibleDC(nint hdc);
+
+    [DllImport("gdi32.dll")]
+    internal static extern nint CreateCompatibleBitmap(nint hdc, int width, int height);
+
+    [DllImport("gdi32.dll")]
+    internal static extern nint SelectObject(nint hdc, nint graphicObject);
+
+    [DllImport("gdi32.dll")]
+    internal static extern bool DeleteObject(nint graphicObject);
+
+    [DllImport("gdi32.dll")]
+    internal static extern bool DeleteDC(nint hdc);
+
+    [DllImport("gdi32.dll")]
+    internal static extern bool BitBlt(nint destination, int x, int y, int width, int height,
+        nint source, int sourceX, int sourceY, uint operation);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     internal static extern nint GetWindowLongPtr(nint hWnd, int index);
