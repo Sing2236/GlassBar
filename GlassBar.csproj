@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>GlassBar</AssemblyName>
     <RootNamespace>GlassBar</RootNamespace>
-    <Version>0.4.0</Version>
-    <InformationalVersion>0.4.0</InformationalVersion>
+    <Version>0.4.1</Version>
+    <InformationalVersion>0.4.1</InformationalVersion>
     <Authors>Ethan Huynh</Authors>
     <Product>GlassBar</Product>
     <Description>A customizable transparent taskbar for Windows.</Description>

@@ -851,13 +851,26 @@ public partial class MainWindow : Window
 
     private void ApplyBackgroundVisibility()
     {
-        if (Resources["GlassBackground"] is SolidColorBrush glass)
-            glass.Opacity = _settings.BackgroundVisible ? _settings.Opacity : 0;
-        BarSurface.BorderBrush = _settings.BackgroundVisible
-            ? new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF))
-            : Brushes.Transparent;
+        if (_settings.BackgroundVisible &&
+            ColorConverter.ConvertFromString(_settings.BackgroundStart) is Color start &&
+            ColorConverter.ConvertFromString(_settings.BackgroundEnd) is Color end)
+        {
+            BarSurface.Background = new LinearGradientBrush(start, end, new Point(0, 0), new Point(1, 1))
+            {
+                Opacity = _settings.Opacity
+            };
+        }
+        else
+        {
+            BarSurface.Background = Brushes.Transparent;
+        }
+        if (_settings.BackgroundVisible && ColorConverter.ConvertFromString(_settings.Border) is Color border)
+            BarSurface.BorderBrush = new SolidColorBrush(border) { Opacity = 0.32 };
+        else
+            BarSurface.BorderBrush = Brushes.Transparent;
         BarHighlight.Opacity = _settings.BackgroundVisible ? 0.28 : 0;
         BarShadow.Opacity = _settings.BackgroundVisible ? 0.48 : 0;
+        BarShadow.BlurRadius = _settings.BackgroundVisible ? _settings.Shadow : 0;
     }
 
     private void BackgroundVisibleCheck_Click(object sender, RoutedEventArgs e)
@@ -873,9 +886,9 @@ public partial class MainWindow : Window
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (BarSurface is null) return;
-        if (Resources["GlassBackground"] is SolidColorBrush glass && _settings.BackgroundVisible) glass.Opacity = e.NewValue;
         if (_initializing) return;
         _settings.Opacity = e.NewValue;
+        ApplyBackgroundVisibility();
         _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();
     }

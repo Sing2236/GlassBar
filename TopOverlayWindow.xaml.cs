@@ -66,13 +66,19 @@ public partial class TopOverlayWindow : Window
     {
         if (ColorConverter.ConvertFromString(settings.Accent) is Color accent)
             Resources["TopAccent"] = new SolidColorBrush(accent);
-        if (Resources["TopGlassBackground"] is SolidColorBrush glass)
-            glass.Opacity = settings.BackgroundVisible ? settings.Opacity : 0;
-        TopSurface.BorderBrush = settings.BackgroundVisible
-            ? new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF))
-            : Brushes.Transparent;
+        if (settings.BackgroundVisible &&
+            ColorConverter.ConvertFromString(settings.BackgroundStart) is Color start &&
+            ColorConverter.ConvertFromString(settings.BackgroundEnd) is Color end)
+            TopSurface.Background = new LinearGradientBrush(start, end, new Point(0, 0), new Point(1, 1)) { Opacity = settings.Opacity };
+        else
+            TopSurface.Background = Brushes.Transparent;
+        if (settings.BackgroundVisible && ColorConverter.ConvertFromString(settings.Border) is Color border)
+            TopSurface.BorderBrush = new SolidColorBrush(border) { Opacity = 0.32 };
+        else
+            TopSurface.BorderBrush = Brushes.Transparent;
         TopHighlight.Opacity = settings.BackgroundVisible ? 0.26 : 0;
         TopShadow.Opacity = settings.BackgroundVisible ? 0.42 : 0;
+        TopShadow.BlurRadius = settings.BackgroundVisible ? settings.Shadow : 0;
         TopEffectsLayer.Mode = settings.Effect;
         TopEffectsLayer.Intensity = settings.EffectIntensity;
         TopEffectsLayer.CustomEffect = settings.CustomEffect;

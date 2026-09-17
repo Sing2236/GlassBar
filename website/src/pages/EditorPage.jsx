@@ -10,8 +10,15 @@ import { useStudioAuth } from "../auth/StudioAuth";
 const kindCopy = {
   glassbar: "Shape the full bar",
   widget: "Build one focused widget",
+  code: "Write a custom widget",
   animation: "Tune an ambient animation"
 };
+const editorTypes = [
+  { id: "glassbar", label: "GlassBar", kind: "glassbar" },
+  { id: "widget", label: "Widget", kind: "widget", mode: "visual" },
+  { id: "code", label: "Code widget", kind: "widget", mode: "code" },
+  { id: "animation", label: "Animation", kind: "animation" }
+];
 const allowedAssets = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 function RangeControl({ label, value, min, max, unit = "", onChange }) {
@@ -49,11 +56,16 @@ export default function EditorPage() {
 
   useEffect(() => { localStorage.setItem("glassbar-studio-draft", JSON.stringify(design)); }, [design]);
 
-  function setKind(kind) {
+  const editorType = design.kind === "widget" && design.widget.mode === "code" ? "code" : design.kind;
+
+  function setEditorType(type) {
+    const selection = editorTypes.find((item) => item.id === type);
+    if (!selection) return;
     setDesign((current) => ({
       ...current,
-      kind,
-      metadata: { ...current.metadata, name: current.metadata.name.startsWith("Untitled") ? `Untitled ${kind === "glassbar" ? "GlassBar" : kind[0].toUpperCase() + kind.slice(1)}` : current.metadata.name }
+      kind: selection.kind,
+      widget: selection.mode ? { ...current.widget, mode: selection.mode } : current.widget,
+      metadata: { ...current.metadata, name: current.metadata.name.startsWith("Untitled") ? `Untitled ${type === "glassbar" ? "GlassBar" : type === "code" ? "Code Widget" : `${type[0].toUpperCase()}${type.slice(1)}`}` : current.metadata.name }
     }));
   }
 
@@ -115,9 +127,9 @@ export default function EditorPage() {
   }
 
   return (
-    <StudioShell eyebrow="PACKAGE EDITOR" title={kindCopy[design.kind]}>
+    <StudioShell eyebrow="PACKAGE EDITOR" title={kindCopy[editorType]}>
       <div className="editor-kind-tabs" role="tablist" aria-label="Design type">
-        {["glassbar", "widget", "animation"].map((kind) => <button role="tab" aria-selected={design.kind === kind} className={design.kind === kind ? "active" : ""} onClick={() => setKind(kind)} key={kind}>{kind === "glassbar" ? "GlassBar" : `${kind[0].toUpperCase()}${kind.slice(1)}`}</button>)}
+        {editorTypes.map((type) => <button role="tab" aria-selected={editorType === type.id} className={editorType === type.id ? "active" : ""} onClick={() => setEditorType(type.id)} key={type.id}>{type.label}</button>)}
       </div>
 
       <div className="editor-layout">
