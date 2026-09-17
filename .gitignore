@@ -22,4 +22,7 @@ installer/output/
 website/node_modules/
 website/.vercel/
 website/dist/
+website/.env.local
+supabase/.temp/
+website/supabase/.temp/
 .DS_Store

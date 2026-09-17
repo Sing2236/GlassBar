@@ -286,7 +286,7 @@ public partial class MainWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == nint.Zero) return;
 
-        var shouldHide = FullscreenWindowDetector.IsForegroundFullscreen(handle);
+        var shouldHide = _settings.HideInFullscreenApps && FullscreenWindowDetector.IsForegroundFullscreen(handle);
         if (shouldHide == _hiddenForFullscreen) return;
         _hiddenForFullscreen = shouldHide;
 
@@ -339,6 +339,7 @@ public partial class MainWindow : Window
         BarSurface.CornerRadius = new CornerRadius(_settings.CornerRadius);
         UseWindowsSearchCheck.IsChecked = _settings.UseWindowsSearch;
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
+        HideInFullscreenCheck.IsChecked = _settings.HideInFullscreenApps;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
         TopOverlayCheck.IsChecked = _settings.TopOverlayEnabled;
         TopClockCheck.IsChecked = _settings.TopShowClock;
@@ -1079,6 +1080,13 @@ public partial class MainWindow : Window
         _settings.HideNativeTaskbar = HideNativeCheck.IsChecked == true;
         if (_settings.HideNativeTaskbar) NativeTaskbar.Hide(); else NativeTaskbar.Show();
         SaveSettings();
+    }
+
+    private void HideInFullscreenCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.HideInFullscreenApps = HideInFullscreenCheck.IsChecked == true;
+        SaveSettings();
+        UpdateFullscreenVisibility();
     }
 
     private void UseWindowsSearchCheck_Changed(object sender, RoutedEventArgs e)

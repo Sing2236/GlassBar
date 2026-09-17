@@ -481,6 +481,11 @@
           </Grid>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Hide in fullscreen apps" FontWeight="SemiBold" /><TextBlock Text="Turn off to keep GlassBar visible over games and videos" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="HideInFullscreenCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideInFullscreenCheck_Click" AutomationProperties.AutomationId="HideInFullscreenApps" />
+          </Grid>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Start with Windows" FontWeight="SemiBold" /><TextBlock Text="Launch when you sign in" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="StartWithWindowsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="StartWithWindowsCheck_Click" AutomationProperties.AutomationId="StartWithWindows" />
           </Grid>
