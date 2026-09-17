@@ -6,6 +6,7 @@ import { seedDesigns } from "../data/seedDesigns";
 import { useStudioAuth } from "../auth/StudioAuth";
 import { createStudioRepository } from "../lib/studioRepository";
 import { downloadPackage } from "../lib/designSchema";
+import { openWithGlassBar } from "../lib/openWithGlassBar";
 
 const sections = [
   { kind: "glassbar", title: "GlassBars", copy: "Complete bar layouts, materials, sizing, and module arrangements." },
@@ -21,7 +22,7 @@ function DesignCard({ item }) {
         <div><span className="kind-label">{item.kind}</span><span className="download-count">↓ {Number(item.downloads || 0).toLocaleString()}</span></div>
         <h3>{item.name}</h3>
         <p>{item.summary}</p>
-        <footer><span>by {item.author}</span><button onClick={() => downloadPackage(item.document)}>Get design</button></footer>
+        <footer><span>by {item.author}</span><span className="design-actions"><button onClick={() => downloadPackage(item.document)}>Download</button><button className="open-glassbar" onClick={() => openWithGlassBar(item)}>Open with GlassBar</button></span></footer>
       </div>
     </article>
   );

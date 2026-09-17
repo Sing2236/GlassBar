@@ -23,6 +23,7 @@ public sealed class BarSettings
     public double AudioVisualizerX { get; set; } = -1;
     public double AudioVisualizerY { get; set; } = -1;
     public bool UseWindowsSearch { get; set; }
+    public bool BackgroundVisible { get; set; } = true;
     public double Opacity { get; set; } = 0.82;
     public double EffectIntensity { get; set; } = 0.72;
     public string Effect { get; set; } = "Rain";

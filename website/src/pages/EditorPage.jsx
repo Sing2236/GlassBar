@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import StudioShell from "../components/StudioShell";
 import GlassBarPreview from "../components/GlassBarPreview";
+import SandboxedWidgetPreview from "../components/SandboxedWidgetPreview";
+import WidgetCodeEditor from "../components/WidgetCodeEditor";
 import { cloneDesign, defaultDesign, downloadPackage, normalizeDesign } from "../lib/designSchema";
 import { createStudioRepository } from "../lib/studioRepository";
 import { useStudioAuth } from "../auth/StudioAuth";
@@ -57,6 +59,10 @@ export default function EditorPage() {
 
   function update(section, key, value) {
     setDesign((current) => ({ ...current, [section]: { ...current[section], [key]: value } }));
+  }
+
+  function updateWidgetCode(code) {
+    update("widget", "code", code);
   }
 
   function toggleModule(module) {
@@ -126,10 +132,12 @@ export default function EditorPage() {
           {design.kind === "glassbar" && <>
             <section className="control-section"><h2>Frame</h2>
               <Segmented label="Direction" value={design.glassbar.orientation} options={[{ value: "horizontal", label: "Horizontal" }, { value: "vertical", label: "Vertical" }]} onChange={(value) => update("glassbar", "orientation", value)} />
+              <Segmented label="Background" value={design.glassbar.backgroundMode} options={[{ value: "glass", label: "Glass" }, { value: "transparent", label: "None" }]} onChange={(value) => update("glassbar", "backgroundMode", value)} />
+              <Segmented label="Effect" value={design.glassbar.effectMode} options={[{ value: "ambient", label: "On" }, { value: "none", label: "Off" }]} onChange={(value) => update("glassbar", "effectMode", value)} />
               <RangeControl label="Length" value={design.glassbar.width} min={520} max={1100} unit="px" onChange={(value) => update("glassbar", "width", value)} />
               <RangeControl label="Thickness" value={design.glassbar.height} min={58} max={94} unit="px" onChange={(value) => update("glassbar", "height", value)} />
               <RangeControl label="Corner radius" value={design.glassbar.radius} min={4} max={40} unit="px" onChange={(value) => update("glassbar", "radius", value)} />
-              <RangeControl label="Opacity" value={design.glassbar.opacity} min={35} max={100} unit="%" onChange={(value) => update("glassbar", "opacity", value)} />
+              {design.glassbar.backgroundMode === "glass" && <RangeControl label="Opacity" value={design.glassbar.opacity} min={5} max={100} unit="%" onChange={(value) => update("glassbar", "opacity", value)} />}
               <RangeControl label="Blur" value={design.glassbar.blur} min={0} max={40} unit="px" onChange={(value) => update("glassbar", "blur", value)} />
             </section>
             <section className="control-section"><h2>Material</h2>
@@ -148,6 +156,8 @@ export default function EditorPage() {
           </>}
 
           {design.kind === "widget" && <section className="control-section"><h2>Widget</h2>
+            <Segmented label="Build mode" value={design.widget.mode} options={[{ value: "visual", label: "Visual" }, { value: "code", label: "Code IDE" }]} onChange={(value) => update("widget", "mode", value)} />
+            {design.widget.mode === "visual" ? <>
             <label className="field-label">Title<input value={design.widget.title} onChange={(event) => update("widget", "title", event.target.value)} /></label>
             <label className="field-label">Main value<input value={design.widget.value} onChange={(event) => update("widget", "value", event.target.value)} /></label>
             <label className="field-label">Detail<input value={design.widget.detail} onChange={(event) => update("widget", "detail", event.target.value)} /></label>
@@ -157,6 +167,10 @@ export default function EditorPage() {
             <RangeControl label="Corner radius" value={design.widget.radius} min={4} max={32} unit="px" onChange={(value) => update("widget", "radius", value)} />
             <ColorControl label="Background" value={design.widget.background} onChange={(value) => update("widget", "background", value)} />
             <ColorControl label="Accent" value={design.widget.accent} onChange={(value) => update("widget", "accent", value)} />
+            </> : <>
+              <p className="section-note code-safety-note">HTML, CSS, and JavaScript run in an isolated preview with network and storage access disabled. Publishing requires a server-side security scan.</p>
+              <WidgetCodeEditor value={design.widget.code} onChange={updateWidgetCode} />
+            </>}
           </section>}
 
           {design.kind === "animation" && <section className="control-section"><h2>Animation</h2>
@@ -174,15 +188,17 @@ export default function EditorPage() {
 
         <section className="editor-preview-panel">
           <div className="preview-toolbar"><span>LIVE PREVIEW</span><span>Changes save locally</span></div>
-          <GlassBarPreview design={design} />
+          {design.kind === "widget" && design.widget.mode === "code"
+            ? <div className="coded-widget-stage"><SandboxedWidgetPreview code={design.widget.code} title={`${design.metadata.name} preview`} /></div>
+            : <GlassBarPreview design={design} />}
           <div className="package-actions">
             <button className="secondary-button" onClick={() => importRef.current?.click()}>Import JSON</button>
             <button className="secondary-button" onClick={() => downloadPackage(design)}>Export package</button>
             <input ref={importRef} type="file" accept="application/json,.json" onChange={importPackage} hidden />
           </div>
           <div className="publish-card">
-            <div><span className="status-dot" /><h2>Publish to Community</h2><p>New submissions are format-validated and held for moderation before going public.</p></div>
-            <label className="asset-picker">Optional preview image or GIF<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseAsset} /></label>
+            <div><span className="status-dot" /><h2>Publish to Community</h2><p>{design.kind === "widget" && design.widget.mode === "code" ? "Code widgets must pass static rules and an Ollama security review before moderation." : "New submissions are format-validated and held for moderation before going public."}</p></div>
+            {!(design.kind === "widget" && design.widget.mode === "code") && <label className="asset-picker">Optional preview image or GIF<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseAsset} /></label>}
             <button className="primary-button" onClick={publish} disabled={publishing}>{publishing ? "Submitting…" : auth.authenticated ? "Submit design" : "Sign up to publish"}</button>
             {message && <p className="editor-message" role="status">{message}</p>}
           </div>

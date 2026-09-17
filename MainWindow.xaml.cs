@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly WindowService _windowService = new();
     private readonly SettingsService _settingsService = new();
     private readonly LicenseService _licenseService = new();
+    private readonly CommunityDesignService _communityDesignService = new();
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly ObservableCollection<PinnedAppConfig> _pinnedApps = [];
     private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
@@ -327,8 +328,10 @@ public partial class MainWindow : Window
         EffectsLayer.CustomEffect = _settings.CustomEffect;
         EffectsLayer.Mode = _settings.Effect;
         EffectsLayer.Intensity = _settings.EffectIntensity;
-        if (Resources["GlassBackground"] is SolidColorBrush glass) glass.Opacity = _settings.Opacity;
+        ApplyBackgroundVisibility();
         OpacitySlider.Value = _settings.Opacity;
+        BackgroundVisibleCheck.IsChecked = _settings.BackgroundVisible;
+        OpacitySlider.IsEnabled = _settings.BackgroundVisible;
         IntensitySlider.Value = _settings.EffectIntensity;
         WidthSlider.Minimum = 520;
         WidthSlider.Maximum = Math.Max(520, (IsBarVertical ? SystemParameters.PrimaryScreenHeight : SystemParameters.PrimaryScreenWidth) - 24);
@@ -371,6 +374,33 @@ public partial class MainWindow : Window
     }
 
     private void SaveSettings() => _settingsService.Save(_settings);
+
+    public async Task ImportCommunityDesignAsync(string command)
+    {
+        try
+        {
+            var result = await _communityDesignService.ImportAsync(command, _settings);
+            if (result.Applied)
+            {
+                var previous = _initializing;
+                _initializing = true;
+                ApplySettings();
+                _initializing = previous;
+                _topOverlay?.ApplyConfiguration(_settings);
+            }
+            Activate();
+            MessageBox.Show(this,
+                result.Applied
+                    ? $"{result.Name} is now active in GlassBar."
+                    : $"{result.Name} was added to your GlassBar Community collection. Coded widgets stay sandboxed and are never executed in the desktop process.",
+                "Community design imported", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, $"GlassBar could not import that design.\n\n{exception.Message}",
+                "Design import failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 
     private void Start_Click(object sender, RoutedEventArgs e) => OpenStartMenu();
     private void Search_Click(object sender, RoutedEventArgs e)
@@ -819,10 +849,31 @@ public partial class MainWindow : Window
 
     private static bool IsPremiumEffect(string effect) => effect is "Snow" or "Fireflies" or "Pulse" or "Custom";
 
+    private void ApplyBackgroundVisibility()
+    {
+        if (Resources["GlassBackground"] is SolidColorBrush glass)
+            glass.Opacity = _settings.BackgroundVisible ? _settings.Opacity : 0;
+        BarSurface.BorderBrush = _settings.BackgroundVisible
+            ? new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF))
+            : Brushes.Transparent;
+        BarHighlight.Opacity = _settings.BackgroundVisible ? 0.28 : 0;
+        BarShadow.Opacity = _settings.BackgroundVisible ? 0.48 : 0;
+    }
+
+    private void BackgroundVisibleCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        _settings.BackgroundVisible = BackgroundVisibleCheck.IsChecked == true;
+        OpacitySlider.IsEnabled = _settings.BackgroundVisible;
+        ApplyBackgroundVisibility();
+        _topOverlay?.ApplyAppearance(_settings);
+        SaveSettings();
+    }
+
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (BarSurface is null) return;
-        if (Resources["GlassBackground"] is SolidColorBrush glass) glass.Opacity = e.NewValue;
+        if (Resources["GlassBackground"] is SolidColorBrush glass && _settings.BackgroundVisible) glass.Opacity = e.NewValue;
         if (_initializing) return;
         _settings.Opacity = e.NewValue;
         _topOverlay?.ApplyAppearance(_settings);

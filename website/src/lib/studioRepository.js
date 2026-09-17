@@ -30,6 +30,23 @@ export function createStudioRepository() {
       });
       if (profileError) throw profileError;
 
+      if (document.kind === "widget" && document.widget.mode === "code") {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error("Your session expired. Sign in again before publishing.");
+        const response = await fetch("/api/publish-widget", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ document, username: cleanUsername })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const reasons = result.security?.reasons?.join(" ");
+          throw new Error(reasons || result.error || "The widget did not pass security review.");
+        }
+        return result;
+      }
+
       let previewUrl = null;
       if (asset) {
         const extension = asset.name.split(".").pop().toLowerCase();
