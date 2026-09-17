@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private bool _widthDragActive;
     private bool _initializing = true;
 
+    internal BarSettings CurrentSettings => _settings;
+
     public MainWindow(bool safeMode = false, bool keepVisibleForUiTests = false)
     {
         InitializeComponent();
@@ -342,6 +344,9 @@ public partial class MainWindow : Window
         CornerSlider.Value = _settings.CornerRadius;
         BarSurface.CornerRadius = new CornerRadius(_settings.CornerRadius);
         UseWindowsSearchCheck.IsChecked = _settings.UseWindowsSearch;
+        AltTabEnabledCheck.IsChecked = _settings.AltTabEnabled;
+        AltTabOptionsPanel.Visibility = _settings.AltTabEnabled ? Visibility.Visible : Visibility.Collapsed;
+        AltTabOpacitySlider.Value = _settings.AltTabOpacity;
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         HideInFullscreenCheck.IsChecked = _settings.HideInFullscreenApps;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
@@ -1168,6 +1173,28 @@ public partial class MainWindow : Window
     {
         if (_initializing) return;
         _settings.UseWindowsSearch = UseWindowsSearchCheck.IsChecked == true;
+        SaveSettings();
+    }
+
+    private void AltTabEnabledCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.AltTabEnabled = AltTabEnabledCheck.IsChecked == true;
+        AltTabOptionsPanel.Visibility = _settings.AltTabEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SaveSettings();
+    }
+
+    private void AltTabBackground_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string background } ||
+            background is not ("Glass" or "Dark" or "Transparent")) return;
+        _settings.AltTabBackground = background;
+        SaveSettings();
+    }
+
+    private void AltTabOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing) return;
+        _settings.AltTabOpacity = e.NewValue;
         SaveSettings();
     }
 

@@ -1,0 +1,119 @@
+<Window x:Class="GlassBar.AltTabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GlassBar window switcher" Width="580" SizeToContent="Height"
+        MaxHeight="760" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False"
+        ShowActivated="False" Topmost="True" Opacity="0"
+        FontFamily="Segoe UI Variable Display, Segoe UI" Foreground="#F8FAFC"
+        AutomationProperties.AutomationId="GlassBarAltTab">
+  <Window.Resources>
+    <Style x:Key="CloseButton" TargetType="Button">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Foreground" Value="#DDE8F4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="10">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Surface" Property="Background" Value="#45FB7185" />
+                <Setter Property="Foreground" Value="#FFFFFF" />
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.68" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="WindowRow" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,0,7" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="#0DFFFFFF" />
+      <Setter Property="BorderBrush" Value="#18FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="RowSurface" Padding="13,10" CornerRadius="14"
+                    Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="RowSurface" Property="Background" Value="#1FFFFFFF" /></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="RowSurface" Property="Background" Value="#2838BDF8" />
+                <Setter TargetName="RowSurface" Property="BorderBrush" Value="#A67DD3FC" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Border x:Name="SwitcherSurface" Padding="18" CornerRadius="24"
+          Background="#ED111722" BorderBrush="#45FFFFFF" BorderThickness="1"
+          RenderTransformOrigin="0.5,0.5">
+    <Border.Effect><DropShadowEffect BlurRadius="38" ShadowDepth="10" Opacity="0.62" Color="#020617" /></Border.Effect>
+    <Border.RenderTransform>
+      <TransformGroup>
+        <ScaleTransform x:Name="SurfaceScale" ScaleX="0.96" ScaleY="0.96" />
+        <TranslateTransform x:Name="SurfaceTranslate" Y="18" />
+      </TransformGroup>
+    </Border.RenderTransform>
+    <Grid>
+      <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+      <DockPanel Margin="4,1,4,14">
+        <Border DockPanel.Dock="Right" Background="#16FFFFFF" CornerRadius="8" Padding="9,4">
+          <TextBlock Text="ALT + TAB" Foreground="#9EB0C5" FontSize="10" FontWeight="SemiBold" />
+        </Border>
+        <StackPanel>
+          <TextBlock Text="Switch windows" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Keep holding Alt and tap Tab to roll" Margin="0,2,0,0" Foreground="#9EB0C5" FontSize="11" />
+        </StackPanel>
+      </DockPanel>
+
+      <ListBox x:Name="WindowList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+               ItemContainerStyle="{StaticResource WindowRow}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionMode="Single"
+               MouseDoubleClick="WindowList_MouseDoubleClick" AutomationProperties.AutomationId="AltTabWindowList">
+        <ListBox.RenderTransform><TranslateTransform x:Name="ListTranslate" /></ListBox.RenderTransform>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Height="48">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" /></Grid.ColumnDefinitions>
+              <Grid Width="38" Height="38" VerticalAlignment="Center">
+                <Border Background="#18FFFFFF" CornerRadius="11" />
+                <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets"
+                           Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" />
+                <Image Source="{Binding Icon}" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
+              </Grid>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="3,0,12,0">
+                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding ProcessName}" Margin="0,2,0,0" Foreground="#9EB0C5" FontSize="10" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Button Grid.Column="2" Style="{StaticResource CloseButton}" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                      Click="CloseWindow_Click" ToolTip="Close window" AutomationProperties.Name="Close window" />
+            </Grid>
+            <DataTemplate.Triggers>
+              <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" /></DataTrigger>
+            </DataTemplate.Triggers>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <TextBlock Grid.Row="2" Margin="4,8,4,0" Text="Release Alt to switch  ·  Esc to cancel"
+                 Foreground="#71849A" FontSize="10" />
+    </Grid>
+  </Border>
+</Window>

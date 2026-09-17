@@ -15,6 +15,7 @@ public partial class App : Application
     private DispatcherTimer? _updateTimer;
     private int _updateCheckRunning;
     private CancellationTokenSource? _commandListenerCancellation;
+    private AltTabService? _altTabService;
     private const string CommandPipe = "GlassBar.DesignCommands.v1";
 
     protected override void OnStartup(StartupEventArgs e)
@@ -46,6 +47,7 @@ public partial class App : Application
         var keepVisibleForUiTests = e.Args.Contains("--qa-visible", StringComparer.OrdinalIgnoreCase);
         var window = new MainWindow(safeMode, keepVisibleForUiTests);
         window.Show();
+        if (!safeMode) _altTabService = new AltTabService(Dispatcher, () => window.CurrentSettings);
         StartCommandListener(window);
         var initialCommand = e.Args.FirstOrDefault(arg => arg.StartsWith("glassbar:", StringComparison.OrdinalIgnoreCase));
         if (initialCommand is not null) Dispatcher.BeginInvoke(async () => await window.ImportCommunityDesignAsync(initialCommand));
@@ -56,6 +58,7 @@ public partial class App : Application
     {
         _updateTimer?.Stop();
         _commandListenerCancellation?.Cancel();
+        _altTabService?.Dispose();
         NativeTaskbar.Show();
         if (_ownsMutex) _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();

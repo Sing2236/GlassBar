@@ -205,6 +205,46 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="GlassMenuItem" TargetType="MenuItem">
+      <Setter Property="Foreground" Value="#F8FAFC" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="MenuItem">
+            <Border x:Name="MenuSurface" Margin="4,2" Padding="{TemplateBinding Padding}"
+                    CornerRadius="9" Background="{TemplateBinding Background}">
+              <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="MenuSurface" Property="Background" Value="#24FFFFFF" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="GlassContextMenu" TargetType="ContextMenu">
+      <Setter Property="Foreground" Value="#F8FAFC" />
+      <Setter Property="Background" Value="#F2111722" />
+      <Setter Property="BorderBrush" Value="#48FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="HasDropShadow" Value="True" />
+      <Setter Property="ItemContainerStyle" Value="{StaticResource GlassMenuItem}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ContextMenu">
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="2">
+              <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Grid x:Name="WindowRoot" Background="Transparent" PreviewMouseLeftButtonDown="WindowRoot_PreviewMouseLeftButtonDown">
@@ -483,6 +523,29 @@
           </Grid>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated vertical window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <CheckBox x:Name="AltTabEnabledCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                      Click="AltTabEnabledCheck_Click" AutomationProperties.AutomationId="AltTabEnabled" />
+          </Grid>
+          <Border x:Name="AltTabOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
+                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="SWITCHER BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,4">
+                <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" Click="AltTabBackground_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Dark" Tag="Dark" Click="AltTabBackground_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Transparent" Tag="Transparent" Click="AltTabBackground_Click" />
+              </WrapPanel>
+              <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Background opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                <Slider x:Name="AltTabOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1"
+                        VerticalAlignment="Center" ValueChanged="AltTabOpacitySlider_ValueChanged" AutomationProperties.AutomationId="AltTabOpacity" />
+              </Grid>
+            </StackPanel>
+          </Border>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="HideNativeCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideNativeCheck_Click" AutomationProperties.AutomationId="HideNativeTaskbar" />
           </Grid>
@@ -546,8 +609,8 @@
             <DataTemplate>
               <Grid Height="34">
                 <Grid.ContextMenu>
-                  <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC">
-                    <MenuItem Header="Close process" Foreground="#F8FAFC" Click="CloseBackgroundProcess_Click" />
+                  <ContextMenu Style="{StaticResource GlassContextMenu}">
+                    <MenuItem Header="Close process" Click="CloseBackgroundProcess_Click" />
                   </ContextMenu>
                 </Grid.ContextMenu>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -611,7 +674,7 @@
                 <DataTemplate>
                   <Button Style="{StaticResource BarButton}" Click="PinnedApp_Click" ToolTip="{Binding DisplayName}" Margin="1,0">
                     <Button.ContextMenu>
-                      <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC"><MenuItem Header="Unpin from GlassBar" Foreground="#F8FAFC" Click="UnpinApp_Click" /></ContextMenu>
+                      <ContextMenu Style="{StaticResource GlassContextMenu}"><MenuItem Header="Unpin from GlassBar" Click="UnpinApp_Click" /></ContextMenu>
                     </Button.ContextMenu>
                     <Grid Width="24" Height="28"><TextBlock x:Name="PinnedFallback" Visibility="Collapsed" Text="&#xE7B8;" FontFamily="Segoe MDL2 Assets" Foreground="#D7E4F2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" /><Image Source="{Binding Icon}" Width="23" Height="23" RenderOptions.BitmapScalingMode="HighQuality" /><Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="{DynamicResource AccentBrush}" /></Grid>
                   </Button>
@@ -629,9 +692,9 @@
                 <DataTemplate>
                   <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0">
                     <Button.ContextMenu>
-                      <ContextMenu Background="#F2111722" BorderBrush="#48FFFFFF" Foreground="#F8FAFC">
-                        <MenuItem Header="Close window" Foreground="#F8FAFC" Click="CloseRunningApp_Click" />
-                        <MenuItem Header="Pin to GlassBar" Foreground="#F8FAFC" Click="PinRunningApp_Click" />
+                      <ContextMenu Style="{StaticResource GlassContextMenu}">
+                        <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
+                        <MenuItem Header="Pin to GlassBar" Click="PinRunningApp_Click" />
                       </ContextMenu>
                     </Button.ContextMenu>
                     <Grid Width="24" Height="30">

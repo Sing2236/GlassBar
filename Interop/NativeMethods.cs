@@ -22,6 +22,12 @@ internal static class NativeMethods
     internal const int WM_HOTKEY = 0x0312;
     internal const int WM_GETICON = 0x007F;
     internal const int WM_CLOSE = 0x0010;
+    internal const int WM_KEYDOWN = 0x0100;
+    internal const int WM_KEYUP = 0x0101;
+    internal const int WM_SYSKEYDOWN = 0x0104;
+    internal const int WM_SYSKEYUP = 0x0105;
+    internal const int WH_KEYBOARD_LL = 13;
+    internal const uint LLKHF_ALTDOWN = 0x20;
     internal const int ICON_SMALL2 = 2;
     internal const int ICON_SMALL = 0;
     internal const int ICON_BIG = 1;
@@ -29,6 +35,11 @@ internal static class NativeMethods
     internal const int GCLP_HICONSM = -34;
     internal const byte VK_LWIN = 0x5B;
     internal const byte VK_TAB = 0x09;
+    internal const byte VK_SHIFT = 0x10;
+    internal const byte VK_MENU = 0x12;
+    internal const byte VK_ESCAPE = 0x1B;
+    internal const byte VK_LMENU = 0xA4;
+    internal const byte VK_RMENU = 0xA5;
     internal const byte VK_S = 0x53;
     internal const byte VK_A = 0x41;
     internal const byte VK_N = 0x4E;
@@ -38,6 +49,7 @@ internal static class NativeMethods
     internal const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
     internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+    internal delegate nint LowLevelKeyboardProc(int code, nint wParam, nint lParam);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -115,6 +127,21 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     internal static extern bool UnregisterHotKey(nint hWnd, int id);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern nint SetWindowsHookEx(int hookId, LowLevelKeyboardProc callback, nint module, uint threadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool UnhookWindowsHookEx(nint hook);
+
+    [DllImport("user32.dll")]
+    internal static extern nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);
+
+    [DllImport("user32.dll")]
+    internal static extern short GetAsyncKeyState(int virtualKey);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    internal static extern nint GetModuleHandle(string? moduleName);
+
     [DllImport("user32.dll")]
     internal static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, nuint extraInfo);
 
@@ -159,6 +186,16 @@ internal static class NativeMethods
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LowLevelKeyboardInput
+    {
+        public uint VirtualKey;
+        public uint ScanCode;
+        public uint Flags;
+        public uint Time;
+        public nuint ExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
