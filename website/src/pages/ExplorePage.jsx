@@ -29,7 +29,7 @@ function DesignCard({ item }) {
 
 export default function ExplorePage() {
   const auth = useStudioAuth();
-  const repository = useMemo(() => createStudioRepository(auth.getIdToken), [auth.getIdToken]);
+  const repository = useMemo(() => createStudioRepository(), []);
   const [designs, setDesigns] = useState(seedDesigns);
   const [query, setQuery] = useState("");
 

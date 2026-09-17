@@ -16,7 +16,7 @@ export default function StudioShell({ children, title, eyebrow, actions }) {
           {auth.authenticated ? (
             <NavLink className="avatar-link" to="/studio/account" aria-label="Account">{(auth.user?.nickname || auth.user?.name || "U").slice(0, 1).toUpperCase()}</NavLink>
           ) : (
-            <button className="text-button" onClick={auth.login} disabled={!auth.configured}>Sign in</button>
+            <NavLink className={`text-button${!auth.configured ? " disabled" : ""}`} to="/studio/account">Sign in</NavLink>
           )}
         </div>
       </header>

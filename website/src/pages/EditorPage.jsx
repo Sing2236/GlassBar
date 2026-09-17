@@ -35,7 +35,7 @@ function Segmented({ value, options, onChange, label }) {
 
 export default function EditorPage() {
   const auth = useStudioAuth();
-  const repository = useMemo(() => createStudioRepository(auth.getIdToken), [auth.getIdToken]);
+  const repository = useMemo(() => createStudioRepository(), []);
   const importRef = useRef(null);
   const [design, setDesign] = useState(() => {
     try { return normalizeDesign(JSON.parse(localStorage.getItem("glassbar-studio-draft"))); }
@@ -97,9 +97,9 @@ export default function EditorPage() {
 
   async function publish() {
     setMessage("");
-    if (!auth.configured || !repository) return setMessage("Connect Auth0 and Supabase before publishing. Local editing and exports still work.");
-    if (!auth.authenticated) return auth.signup();
-    if (!auth.mfaVerified) return setMessage("Publishing requires a fresh two-factor sign-in. Complete email or SMS MFA, then return here.");
+    if (!auth.configured || !repository) return setMessage("Connect Supabase before publishing. Local editing and exports still work.");
+    if (!auth.authenticated) return window.location.assign("/studio/account?mode=signup");
+    if (!auth.mfaVerified) return setMessage("Publishing requires two-factor verification. Finish MFA on your account, then return here.");
     setPublishing(true);
     try {
       await repository.publish({ design, user: auth.user, username: auth.user?.nickname, asset });

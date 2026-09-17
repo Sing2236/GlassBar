@@ -119,6 +119,7 @@ a { color: inherit; }
 .header-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .text-button { padding: 8px 4px; border: 0; background: transparent; font-size: 13px; font-weight: 620; cursor: pointer; }
 .text-button:disabled { color: #9da5ad; cursor: not-allowed; }
+.text-button.disabled { color: #9da5ad; pointer-events: none; }
 .avatar-link { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #172434; text-decoration: none; font-size: 13px; font-weight: 700; }
 
 .studio-main { width: min(1280px, calc(100% - 48px)); margin: 0 auto; padding: 58px 0 90px; }
@@ -211,6 +212,21 @@ a { color: inherit; }
 .account-card dd { margin: 0; font-weight: 650; }
 .account-card dd.good { color: #258c5c; }
 .account-card dd.warning { color: #ad6a22; }
+.auth-form { display: grid; gap: 4px; margin-top: 22px; }
+.auth-form .primary-button, .verify-form .primary-button { width: 100%; margin-top: 14px; }
+.account-switch { margin-top: 18px; padding: 0; border: 0; background: transparent; color: #1c7fa7; font-size: 12px; font-weight: 650; cursor: pointer; }
+.account-switch:hover { color: #155f7d; text-decoration: underline; text-underline-offset: 4px; }
+.account-switch:focus-visible { outline: 2px solid #258fb9; outline-offset: 4px; }
+.account-message { margin-top: 20px !important; padding: 11px 13px; border-radius: 10px; background: #eaf5fa; color: #28627a !important; font-size: 12px; }
+.mfa-panel { display: grid; gap: 13px; margin-top: 22px; padding: 20px; border: 1px solid #dce5ea; border-radius: 15px; background: #f8fafb; }
+.mfa-panel h3 { margin: 0; font-size: 14px; }
+.mfa-panel p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.factor-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.phone-enrollment, .verify-form { display: grid; gap: 9px; }
+.phone-enrollment .field-label, .verify-form .field-label { margin-top: 0; }
+.totp-setup { display: grid; justify-items: start; gap: 12px; }
+.mfa-qr { width: 190px; height: 190px; padding: 9px; border: 1px solid #dce3e8; border-radius: 12px; background: #fff; }
+.mfa-secret code { overflow-wrap: anywhere; color: #28323c; }
 
 @keyframes particle-fall { from { transform: translate3d(-6px,-20px,0) rotate(10deg); } to { transform: translate3d(8px,110px,0) rotate(10deg); } }
 @keyframes particle-rise { from { transform: translate3d(-5px,20px,0); } to { transform: translate3d(8px,-110px,0); } }

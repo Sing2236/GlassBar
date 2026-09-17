@@ -8,7 +8,7 @@ module.exports = defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("@auth0") || id.includes("@supabase")) return "studio-services";
+          if (id.includes("@supabase")) return "studio-services";
           if (id.includes("node_modules/react")) return "react-vendor";
         }
       }
