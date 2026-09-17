@@ -9,5 +9,6 @@ public sealed class AppItem
     public required string ProcessName { get; init; }
     public string? ExecutablePath { get; init; }
     public ImageSource? Icon { get; init; }
+    public ImageSource? Preview { get; init; }
     public bool IsActive { get; init; }
 }

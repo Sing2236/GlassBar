@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using GlassBar.Models;
@@ -24,19 +23,19 @@ public partial class AltTabWindow : Window
     public bool Open(BarSettings settings, bool reverse)
     {
         _items.Clear();
-        foreach (var item in _windowService.GetOpenWindows()) _items.Add(item);
+        foreach (var item in _windowService.GetOpenWindows(includePreviews: true)) _items.Add(item);
         if (_items.Count == 0) return false;
 
         ApplyAppearance(settings);
-        MaxHeight = Math.Max(300, SystemParameters.WorkArea.Height * 0.82);
+        SizeToFilmstrip();
         var activeIndex = _items.Select((item, index) => (item, index)).FirstOrDefault(pair => pair.item.IsActive).index;
         if (!_items.Any(item => item.IsActive)) activeIndex = reverse ? 0 : _items.Count - 1;
         WindowList.SelectedIndex = Wrap(activeIndex + (reverse ? -1 : 1));
 
         _hiding = false;
         Opacity = 0;
-        SurfaceScale.ScaleX = SurfaceScale.ScaleY = 0.96;
-        SurfaceTranslate.Y = 18;
+        SurfaceScale.ScaleX = SurfaceScale.ScaleY = 0.99;
+        SurfaceTranslate.Y = 10;
         Show();
         PositionOnWorkArea();
         WindowList.ScrollIntoView(WindowList.SelectedItem);
@@ -50,9 +49,9 @@ public partial class AltTabWindow : Window
         WindowList.SelectedIndex = Wrap(WindowList.SelectedIndex + (reverse ? -1 : 1));
         WindowList.ScrollIntoView(WindowList.SelectedItem);
 
-        ListTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
+        ListTranslate.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation
         {
-            From = reverse ? -16 : 16,
+            From = reverse ? -22 : 22,
             To = 0,
             Duration = TimeSpan.FromMilliseconds(150),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -80,8 +79,8 @@ public partial class AltTabWindow : Window
         SwitcherSurface.Background = settings.AltTabBackground switch
         {
             "Dark" => new SolidColorBrush(Color.FromArgb(alpha, 5, 9, 16)),
-            "Transparent" => new SolidColorBrush(Color.FromArgb((byte)Math.Min((int)alpha, 76), 10, 17, 27)),
-            _ => new SolidColorBrush(Color.FromArgb(alpha, 17, 23, 34))
+            "Transparent" => new SolidColorBrush(Color.FromArgb((byte)Math.Min((int)alpha, 62), 41, 57, 66)),
+            _ => new SolidColorBrush(Color.FromArgb(alpha, 92, 114, 128))
         };
         SwitcherSurface.BorderBrush = settings.AltTabBackground == "Transparent"
             ? new SolidColorBrush(Color.FromArgb(72, 255, 255, 255))
@@ -96,13 +95,22 @@ public partial class AltTabWindow : Window
         Top = work.Top + (work.Height - ActualHeight) / 2;
     }
 
+    private void SizeToFilmstrip()
+    {
+        const double cardWidth = 148;
+        const double chrome = 22;
+        var work = SystemParameters.WorkArea;
+        Width = Math.Min(work.Width - 24, _items.Count * cardWidth + chrome);
+        Height = Math.Min(252, work.Height - 24);
+    }
+
     private void AnimateOpen()
     {
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(185)) { EasingFunction = ease });
-        SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(210)) { EasingFunction = ease });
-        SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(210)) { EasingFunction = ease });
-        SurfaceTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(210)) { EasingFunction = ease });
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.99, 1, TimeSpan.FromMilliseconds(190)) { EasingFunction = ease });
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.99, 1, TimeSpan.FromMilliseconds(190)) { EasingFunction = ease });
+        SurfaceTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(190)) { EasingFunction = ease });
     }
 
     private void HideAnimated(Action? afterHide)
@@ -136,10 +144,5 @@ public partial class AltTabWindow : Window
         }
         WindowList.SelectedIndex = Math.Min(Math.Max(0, oldIndex), _items.Count - 1);
         WindowList.ScrollIntoView(WindowList.SelectedItem);
-    }
-
-    private void WindowList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        CompleteSelection();
     }
 }

@@ -54,7 +54,7 @@ public sealed class WindowService
             .ToList();
     }
 
-    public IReadOnlyList<AppItem> GetOpenWindows()
+    public IReadOnlyList<AppItem> GetOpenWindows(bool includePreviews = false)
     {
         var windows = new List<AppItem>();
         var shell = NativeMethods.GetShellWindow();
@@ -86,6 +86,7 @@ public sealed class WindowService
                     ProcessName = process.ProcessName,
                     ExecutablePath = executablePath,
                     Icon = ExtractIcon(handle, process),
+                    Preview = includePreviews ? CaptureWindowPreview(handle) : null,
                     IsActive = handle == foreground
                 });
             }
@@ -169,5 +170,93 @@ public sealed class WindowService
             finally { NativeMethods.DestroyIcon(ownedIcon); }
         }
         catch { return null; }
+    }
+
+    private static ImageSource? CaptureWindowPreview(nint window)
+    {
+        if (!NativeMethods.GetWindowRect(window, out var bounds)) return null;
+        var width = bounds.Right - bounds.Left;
+        var height = bounds.Bottom - bounds.Top;
+        if (width < 2 || height < 2 || width > 8192 || height > 8192) return null;
+
+        var screenDc = NativeMethods.GetDC(nint.Zero);
+        if (screenDc == nint.Zero) return null;
+        var memoryDc = nint.Zero;
+        var bitmap = nint.Zero;
+        var previous = nint.Zero;
+        try
+        {
+            memoryDc = NativeMethods.CreateCompatibleDC(screenDc);
+            if (memoryDc == nint.Zero) return null;
+            bitmap = NativeMethods.CreateCompatibleBitmap(screenDc, width, height);
+            if (bitmap == nint.Zero) return null;
+            previous = NativeMethods.SelectObject(memoryDc, bitmap);
+
+            var rendered = NativeMethods.PrintWindow(window, memoryDc, NativeMethods.PW_RENDERFULLCONTENT);
+            if (!rendered)
+            {
+                var windowDc = NativeMethods.GetWindowDC(window);
+                if (windowDc != nint.Zero)
+                {
+                    try
+                    {
+                        rendered = NativeMethods.BitBlt(memoryDc, 0, 0, width, height, windowDc, 0, 0,
+                            NativeMethods.SRCCOPY | NativeMethods.CAPTUREBLT);
+                    }
+                    finally { NativeMethods.ReleaseDC(window, windowDc); }
+                }
+            }
+            if (!rendered) return null;
+
+            var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, nint.Zero, System.Windows.Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+            const int targetWidth = 144;
+            const int targetHeight = 224;
+            var scale = Math.Max(targetWidth / (double)source.PixelWidth, targetHeight / (double)source.PixelHeight);
+            var drawWidth = source.PixelWidth * scale;
+            var drawHeight = source.PixelHeight * scale;
+            var visual = new DrawingVisual();
+            using (var context = visual.RenderOpen())
+                context.DrawImage(source, new System.Windows.Rect(
+                    (targetWidth - drawWidth) / 2,
+                    (targetHeight - drawHeight) / 2,
+                    drawWidth,
+                    drawHeight));
+
+            var preview = new RenderTargetBitmap(targetWidth, targetHeight, 96, 96, PixelFormats.Pbgra32);
+            preview.Render(visual);
+            preview.Freeze();
+            return IsBlankPreview(preview) ? null : preview;
+        }
+        catch { return null; }
+        finally
+        {
+            if (previous != nint.Zero && memoryDc != nint.Zero) NativeMethods.SelectObject(memoryDc, previous);
+            if (bitmap != nint.Zero) NativeMethods.DeleteObject(bitmap);
+            if (memoryDc != nint.Zero) NativeMethods.DeleteDC(memoryDc);
+            NativeMethods.ReleaseDC(nint.Zero, screenDc);
+        }
+    }
+
+    private static bool IsBlankPreview(BitmapSource preview)
+    {
+        var stride = preview.PixelWidth * 4;
+        var pixels = new byte[stride * preview.PixelHeight];
+        preview.CopyPixels(pixels, stride, 0);
+        var minimum = 255;
+        var maximum = 0;
+        var visibleSamples = 0;
+
+        for (var y = 0; y < preview.PixelHeight; y += 8)
+        for (var x = 0; x < preview.PixelWidth; x += 8)
+        {
+            var offset = y * stride + x * 4;
+            var brightness = Math.Max(pixels[offset], Math.Max(pixels[offset + 1], pixels[offset + 2]));
+            minimum = Math.Min(minimum, brightness);
+            maximum = Math.Max(maximum, brightness);
+            if (brightness > 14) visibleSamples++;
+        }
+
+        return visibleSamples < 2 || maximum - minimum < 4;
     }
 }
