@@ -33,6 +33,6 @@ test("edits each package type and exports without authentication", async ({ page
   await expect(page.getByRole("heading", { name: "Tune an ambient animation" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export package" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign up to publish" })).toBeVisible();
-  await expect(page.getByText(/format-validated and held for moderation/)).toBeVisible();
+  await expect(page.getByText(/held for manual approval/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width);
 });

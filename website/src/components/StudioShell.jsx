@@ -10,6 +10,7 @@ export default function StudioShell({ children, title, eyebrow, actions }) {
         <nav aria-label="Studio navigation">
           <NavLink to="/studio" end>Explore</NavLink>
           <NavLink to="/studio/editor">Create</NavLink>
+          {auth.isAdmin && <NavLink to="/studio/moderation">Review</NavLink>}
         </nav>
         <div className="header-actions">
           {actions}

@@ -3,6 +3,7 @@ import { studioBackendConfigured, supabase } from "../lib/supabaseClient";
 
 const AuthContext = createContext(null);
 export const authConfigured = studioBackendConfigured;
+export const studioAdminEmail = "ethanhuynh365@gmail.com";
 
 export function StudioAuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -54,6 +55,7 @@ export function StudioAuthProvider({ children }) {
     loading,
     authenticated: Boolean(session),
     mfaVerified: assuranceLevel === "aal2",
+    isAdmin: user?.email?.toLowerCase() === studioAdminEmail,
     user,
     signup: async ({ email, password, username }) => supabase.auth.signUp({
       email,

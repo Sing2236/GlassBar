@@ -3,6 +3,7 @@ import { StudioAuthProvider } from "./auth/StudioAuth";
 import ExplorePage from "./pages/ExplorePage";
 import EditorPage from "./pages/EditorPage";
 import AccountPage from "./pages/AccountPage";
+import ModerationPage from "./pages/ModerationPage";
 
 export default function StudioApp() {
   return (
@@ -11,6 +12,7 @@ export default function StudioApp() {
         <Route index element={<ExplorePage />} />
         <Route path="editor" element={<EditorPage />} />
         <Route path="account" element={<AccountPage />} />
+        <Route path="moderation" element={<ModerationPage />} />
         <Route path="*" element={<Navigate to="/studio" replace />} />
       </Routes>
     </StudioAuthProvider>
