@@ -25,4 +25,4 @@ npm run dev
 
 ## Package boundary
 
-Community packages are declarative JSON, not executable JavaScript or native binaries. They can control the full visual layout, approved widget data sources, and animation parameters without granting uploaded content code execution on another user's PC.
+Community packages are JSON and never contain native binaries. Code-widget packages may include HTML, CSS, and JavaScript, but the website runs that code in an isolated preview with network and storage access disabled. Publishing code widgets also requires the server-side static rules and Ollama security review before moderation.
