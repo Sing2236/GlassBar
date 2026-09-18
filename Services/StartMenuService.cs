@@ -41,23 +41,32 @@ public sealed class StartMenuService
         return _cacheTask ??= Task.Run(LoadApps);
     }
 
-    public async Task<IReadOnlyList<LaunchableApp>> SearchAsync(string query, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<LaunchableApp>> SearchAppsAsync(
+        string query,
+        CancellationToken cancellationToken,
+        int maxResults = 18)
     {
         query = query.Trim();
         var apps = await GetAppsAsync();
         cancellationToken.ThrowIfCancellationRequested();
 
         if (query.Length == 0)
-            return apps.OrderByDescending(app => app.IsSystemApp).ThenBy(app => app.Name).Take(24).ToList();
+            return apps.OrderByDescending(app => app.IsSystemApp).ThenBy(app => app.Name).Take(maxResults).ToList();
 
-        var appMatches = apps
+        return apps
             .Select(app => (App: app, Score: MatchScore(app, query)))
             .Where(match => match.Score > 0)
             .OrderByDescending(match => match.Score)
             .ThenBy(match => match.App.Name)
-            .Take(18)
+            .Take(maxResults)
             .Select(match => match.App)
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<LaunchableApp>> SearchAsync(string query, CancellationToken cancellationToken)
+    {
+        query = query.Trim();
+        var appMatches = await SearchAppsAsync(query, cancellationToken);
 
         var fileMatches = query.Length < 2
             ? []
