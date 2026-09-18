@@ -454,6 +454,45 @@
             <StackPanel><TextBlock Text="Audio visualizer  ·  PRO" FontWeight="SemiBold" /><TextBlock Text="Transparent, reactive and draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="AudioVisualizerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="AudioVisualizerCheck_Click" AutomationProperties.AutomationId="AudioVisualizerEnabled" />
           </Grid>
+          <Border x:Name="AudioVisualizerOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
+                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="VISUAL STYLE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,5">
+                <Button Style="{StaticResource ChoiceButton}" Content="Spectrum" Tag="Spectrum" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Mirror" Tag="Mirror" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Wave" Tag="Wave" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Pulse" Tag="Pulse" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+              </WrapPanel>
+              <TextBlock Text="COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,5">
+                <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Ocean" Tag="Ocean" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Sunset" Tag="Sunset" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Neon" Tag="Neon" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Mono" Tag="Mono" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+              </WrapPanel>
+              <TextBlock Text="BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,5">
+                <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Tint" Tag="Tint" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="Transparent" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+              </WrapPanel>
+              <TextBlock Text="BORDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,5">
+                <Button Style="{StaticResource ChoiceButton}" Content="Subtle" Tag="Subtle" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="None" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+              </WrapPanel>
+              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Sensitivity" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSensitivitySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.5" Maximum="2" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Smoothing" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSmoothingSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.65" Maximum="0.96" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Glow" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioGlowSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0" Maximum="1" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Detail" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioBarCountSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="12" Maximum="64" TickFrequency="2" IsSnapToTickEnabled="True" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Width" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioWidthSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="260" Maximum="720" TickFrequency="10" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Height" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioHeightSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="96" Maximum="300" TickFrequency="4" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+            </StackPanel>
+          </Border>
 
           <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
             <StackPanel>

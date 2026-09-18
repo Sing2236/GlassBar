@@ -22,6 +22,16 @@ public sealed class BarSettings
     public bool AudioVisualizerEnabled { get; set; }
     public double AudioVisualizerX { get; set; } = -1;
     public double AudioVisualizerY { get; set; } = -1;
+    public string AudioVisualizerMode { get; set; } = "Spectrum";
+    public string AudioVisualizerPalette { get; set; } = "Accent";
+    public string AudioVisualizerBackground { get; set; } = "Glass";
+    public string AudioVisualizerBorder { get; set; } = "Subtle";
+    public double AudioVisualizerSensitivity { get; set; } = 1;
+    public double AudioVisualizerSmoothing { get; set; } = 0.88;
+    public double AudioVisualizerGlow { get; set; } = 0.38;
+    public int AudioVisualizerBarCount { get; set; } = 30;
+    public double AudioVisualizerWidth { get; set; } = 360;
+    public double AudioVisualizerHeight { get; set; } = 132;
     public bool UseWindowsSearch { get; set; }
     public bool AltTabEnabled { get; set; } = true;
     public string AltTabLayout { get; set; } = "Compact";
