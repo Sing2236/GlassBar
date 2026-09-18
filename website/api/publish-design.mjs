@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { normalizeDesign } from "../src/lib/designSchema.js";
 import { authenticateRequest, serverConfig, slugify, supabaseRequest } from "./_lib/studioServer.mjs";
-import { sendSubmissionNotification } from "./_lib/submissionNotification.mjs";
 
 const MAX_PACKAGE_BYTES = 160_000;
 
@@ -65,14 +64,7 @@ export default async function handler(request, response) {
     if (!insertResponse.ok) throw new Error(`Publish failed with ${insertResponse.status}.`);
     const [created] = await insertResponse.json();
 
-    let notification = { sent: false, reason: "delivery_failed" };
-    try {
-      notification = await sendSubmissionNotification({ design: document, submissionId: created.id, submitter: auth.user });
-    } catch (error) {
-      console.error("Design notification threw", error instanceof Error ? error.message : "Unknown error");
-    }
-
-    return response.status(201).json({ id: created.id, status: "pending", notification });
+    return response.status(201).json({ id: created.id, status: "pending" });
   } catch (error) {
     console.error("Design publishing failed", error instanceof Error ? error.message : "Unknown error");
     return response.status(503).json({ error: "Publishing is temporarily unavailable. No design was submitted." });
