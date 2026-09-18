@@ -12,8 +12,8 @@
     </ContextMenu>
   </Window.ContextMenu>
   <Grid Background="#01000000" Cursor="SizeAll">
-    <Border Margin="5" CornerRadius="22" Background="#080B1220" BorderBrush="#18FFFFFF" BorderThickness="1">
-      <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="0" Opacity="0.38" Color="#38BDF8" /></Border.Effect>
+    <Border x:Name="VisualizerSurface" Margin="5" CornerRadius="22" Background="#080B1220" BorderBrush="#18FFFFFF" BorderThickness="1">
+      <Border.Effect><DropShadowEffect x:Name="VisualizerGlow" BlurRadius="22" ShadowDepth="0" Opacity="0.38" Color="#38BDF8" /></Border.Effect>
       <Grid Margin="18,14">
         <ItemsControl x:Name="Bars">
           <ItemsControl.ItemsPanel>

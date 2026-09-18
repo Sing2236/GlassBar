@@ -528,6 +528,13 @@ public partial class MainWindow : Window
         TopFocusCheck.IsChecked = _settings.TopShowFocus;
         TopNewsCheck.IsChecked = _settings.TopShowNews;
         AudioVisualizerCheck.IsChecked = _settings.AudioVisualizerEnabled;
+        AudioVisualizerOptionsPanel.Visibility = _settings.AudioVisualizerEnabled ? Visibility.Visible : Visibility.Collapsed;
+        AudioSensitivitySlider.Value = Math.Clamp(_settings.AudioVisualizerSensitivity, 0.5, 2);
+        AudioSmoothingSlider.Value = Math.Clamp(_settings.AudioVisualizerSmoothing, 0.65, 0.96);
+        AudioGlowSlider.Value = Math.Clamp(_settings.AudioVisualizerGlow, 0, 1);
+        AudioBarCountSlider.Value = Math.Clamp(_settings.AudioVisualizerBarCount, 12, 64);
+        AudioWidthSlider.Value = Math.Clamp(_settings.AudioVisualizerWidth, 260, 720);
+        AudioHeightSlider.Value = Math.Clamp(_settings.AudioVisualizerHeight, 96, 300);
         TopOverlayOptionsPanel.Visibility = _settings.TopOverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
         _selectedTopSticker ??= _settings.TopStickers.FirstOrDefault();
         RefreshTopStickerPicker();
@@ -1501,10 +1508,39 @@ public partial class MainWindow : Window
         if (AudioVisualizerCheck.IsChecked == true && !EnsurePro("Audio visualizer"))
         {
             AudioVisualizerCheck.IsChecked = false;
+            AudioVisualizerOptionsPanel.Visibility = Visibility.Collapsed;
             return;
         }
         _settings.AudioVisualizerEnabled = AudioVisualizerCheck.IsChecked == true;
+        AudioVisualizerOptionsPanel.Visibility = _settings.AudioVisualizerEnabled ? Visibility.Visible : Visibility.Collapsed;
         ApplyAudioVisualizerState();
+        SaveSettings();
+    }
+
+    private void AudioVisualizerChoice_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string value, CommandParameter: string target }) return;
+        switch (target)
+        {
+            case "Mode": _settings.AudioVisualizerMode = value; break;
+            case "Palette": _settings.AudioVisualizerPalette = value; break;
+            case "Background": _settings.AudioVisualizerBackground = value; break;
+            default: return;
+        }
+        _audioVisualizer?.ApplyConfiguration();
+        SaveSettings();
+    }
+
+    private void AudioVisualizerSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || AudioSensitivitySlider is null) return;
+        _settings.AudioVisualizerSensitivity = AudioSensitivitySlider.Value;
+        _settings.AudioVisualizerSmoothing = AudioSmoothingSlider.Value;
+        _settings.AudioVisualizerGlow = AudioGlowSlider.Value;
+        _settings.AudioVisualizerBarCount = (int)Math.Round(AudioBarCountSlider.Value);
+        _settings.AudioVisualizerWidth = AudioWidthSlider.Value;
+        _settings.AudioVisualizerHeight = AudioHeightSlider.Value;
+        _audioVisualizer?.ApplyConfiguration();
         SaveSettings();
     }
 
@@ -1518,7 +1554,11 @@ public partial class MainWindow : Window
                 _audioVisualizer.Closed += (_, _) =>
                 {
                     _audioVisualizer = null;
-                    if (AudioVisualizerCheck is not null) AudioVisualizerCheck.IsChecked = _settings.AudioVisualizerEnabled;
+                    if (AudioVisualizerCheck is not null)
+                    {
+                        AudioVisualizerCheck.IsChecked = _settings.AudioVisualizerEnabled;
+                        AudioVisualizerOptionsPanel.Visibility = _settings.AudioVisualizerEnabled ? Visibility.Visible : Visibility.Collapsed;
+                    }
                 };
                 _audioVisualizer.Show();
             }
