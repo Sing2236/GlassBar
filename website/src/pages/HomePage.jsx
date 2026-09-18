@@ -11,6 +11,7 @@ export default function HomePage() {
       <nav className="home-links" aria-label="GlassBar links">
         <a href="https://github.com/Sing2236/GlassBar/releases/latest/download/GlassBarSetup.exe">Download</a>
         <Link to="/studio">Community</Link>
+        <a href="https://github.com/Sing2236/GlassBar" target="_blank" rel="noreferrer">GitHub</a>
         <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=Ethanhuynh365%40gmail.com&amp;currency_code=USD" target="_blank" rel="noreferrer">Support</a>
       </nav>
     </main>
