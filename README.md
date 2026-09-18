@@ -16,6 +16,10 @@ The animation below is captured from the real app, moving from **Aurora** into *
 
 ![GlassBar Alt Tab switcher](docs/alt-tab-switcher-live.png)
 
+### Find an open app
+
+![GlassBar compact search palette](docs/search-palette-live.png)
+
 ### Add the widgets you want
 
 ![GlassBar top widget bar](docs/widget-bar.png)
