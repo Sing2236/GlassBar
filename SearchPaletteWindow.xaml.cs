@@ -135,7 +135,7 @@ public partial class SearchPaletteWindow : Window
             }
             var results = _mode switch
             {
-                SearchPaletteMode.Apps => SearchOpenWindows(query),
+                SearchPaletteMode.Apps => await SearchApplicationsAsync(query, cancellation.Token),
                 SearchPaletteMode.Web => await SearchWebAsync(query, cancellation.Token),
                 _ => await SearchCombinedAsync(query, cancellation.Token)
             };
@@ -159,6 +159,21 @@ public partial class SearchPaletteWindow : Window
             Window = item
         }).ToList();
 
+    private async Task<IReadOnlyList<SearchPaletteItem>> SearchApplicationsAsync(
+        string query,
+        CancellationToken cancellationToken)
+    {
+        var results = SearchOpenWindows(query).ToList();
+        var installedApps = await _startMenuService.SearchAppsAsync(query, cancellationToken);
+        results.AddRange(installedApps.Select(ToPaletteItem));
+
+        return results
+            .GroupBy(item => $"{item.Kind}|{item.Name}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Take(10)
+            .ToList();
+    }
+
     private async Task<IReadOnlyList<SearchPaletteItem>> SearchWebAsync(string query, CancellationToken cancellationToken)
     {
         var history = await _browserService.SearchHistoryAsync(query, cancellationToken);
@@ -177,14 +192,7 @@ public partial class SearchPaletteWindow : Window
     {
         var results = SearchOpenWindows(query).ToList();
         var local = await _startMenuService.SearchAsync(query, cancellationToken);
-        results.AddRange(local.Where(item => item.Kind != "Web").Select(item => new SearchPaletteItem
-        {
-            Name = item.Name,
-            Subtitle = item.Subtitle,
-            Kind = item.Kind,
-            Icon = item.Icon,
-            Launchable = item
-        }));
+        results.AddRange(local.Where(item => item.Kind != "Web").Select(ToPaletteItem));
 
         if (query.Length > 0)
         {
@@ -202,6 +210,15 @@ public partial class SearchPaletteWindow : Window
         return results.GroupBy(item => $"{item.Kind}|{item.Name}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First()).Take(10).ToList();
     }
+
+    private static SearchPaletteItem ToPaletteItem(LaunchableApp item) => new()
+    {
+        Name = item.Name,
+        Subtitle = item.Subtitle,
+        Kind = item.Kind,
+        Icon = item.Icon,
+        Launchable = item
+    };
 
     private void AddWebSearch(ICollection<SearchPaletteItem> results, string query)
     {
@@ -239,9 +256,9 @@ public partial class SearchPaletteWindow : Window
         CombinedModeButton.IsChecked = mode == SearchPaletteMode.Combined;
         QueryHint.Text = mode switch
         {
-            SearchPaletteMode.Apps => "Search open applications",
+            SearchPaletteMode.Apps => "Search open and installed applications",
             SearchPaletteMode.Web => "Search browser history and the web",
-            _ => "Search open apps, files, settings, and the web"
+            _ => "Search apps, files, settings, and the web"
         };
         ModeHotkeyText.Text = mode switch
         {
