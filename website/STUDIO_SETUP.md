@@ -23,10 +23,6 @@ npm install
 npm run dev
 ```
 
-## 3. Review notification email
-
-Set `RESEND_API_KEY`, `STUDIO_REVIEW_EMAIL`, and `STUDIO_EMAIL_FROM` in the server environment. Each successful submission sends a plain-text link to the private moderation queue. Email delivery is deliberately non-blocking: if the provider is down, the submission remains safely queued for review.
-
 `STUDIO_ADMIN_EMAIL` controls server-side access to the moderation API. The current reviewer account is `ethanhuynh365@gmail.com`. Admin requests still require a valid Supabase session with two-factor verification.
 
 ## Package boundary

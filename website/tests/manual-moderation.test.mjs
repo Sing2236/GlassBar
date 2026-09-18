@@ -7,7 +7,6 @@ process.env.SUPABASE_URL = "https://studio.test";
 process.env.SUPABASE_PUBLISHABLE_KEY = "anon-key";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
 process.env.STUDIO_ADMIN_EMAIL = "ethanhuynh365@gmail.com";
-delete process.env.RESEND_API_KEY;
 
 function token(aal = "aal2") {
   return `header.${Buffer.from(JSON.stringify({ aal })).toString("base64url")}.signature`;
@@ -60,7 +59,7 @@ test("coded widgets enter the pending queue without an automated scanner", async
 
     assert.equal(result.statusCode, 201);
     assert.equal(result.payload.status, "pending");
-    assert.deepEqual(result.payload.notification, { sent: false, reason: "not_configured" });
+    assert.deepEqual(Object.keys(result.payload).sort(), ["id", "status"]);
     assert.equal(calls.some((call) => call.url.includes("11434") || call.url.includes("api/chat")), false);
     const insert = calls.find((call) => call.url.includes("/rest/v1/designs"));
     assert.equal(JSON.parse(insert.options.body).status, "pending");
