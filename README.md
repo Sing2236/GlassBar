@@ -20,7 +20,7 @@ Choose a compact strip or a full-screen switcher, then set the background and op
 
 ### Built-in Search Bar
 
-![GlassBar search bar opening empty before typing youtube](docs/search-palette-youtube.gif)
+![GlassBar search bar opening empty before typing youtube](docs/built-in-search-youtube.gif)
 
 ### Add the widgets you want
 
