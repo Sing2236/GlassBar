@@ -19,6 +19,8 @@ internal static class NativeMethods
     internal const uint MOD_ALT = 0x0001;
     internal const uint MOD_CONTROL = 0x0002;
     internal const uint MOD_SHIFT = 0x0004;
+    internal const uint MOD_WIN = 0x0008;
+    internal const uint MOD_NOREPEAT = 0x4000;
     internal const int WM_HOTKEY = 0x0312;
     internal const int WM_GETICON = 0x007F;
     internal const int WM_CLOSE = 0x0010;
@@ -43,6 +45,7 @@ internal static class NativeMethods
     internal const byte VK_S = 0x53;
     internal const byte VK_A = 0x41;
     internal const byte VK_N = 0x4E;
+    internal const byte VK_W = 0x57;
     internal const uint KEYEVENTF_KEYUP = 0x0002;
     internal const uint SHGFI_ICON = 0x000000100;
     internal const uint SHGFI_SMALLICON = 0x000000001;

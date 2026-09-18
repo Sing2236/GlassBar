@@ -500,12 +500,12 @@
               <TextBlock Text="TOP BAR DIRECTION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
               <WrapPanel Margin="0,8,0,7"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="TopBarOrientation_Click" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="TopBarOrientation_Click" /></WrapPanel>
               <TextBlock Text="TOP BAR WIDGETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer  ·  PRO" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Daily news" FontSize="11" /><CheckBox x:Name="TopNewsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Width="40" Height="22" Click="TopWidgetCheck_Click" Tag="News" /></Grid>
+              <Grid Margin="0,9,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
+              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
+              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
+              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
+              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer  ·  PRO" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
+              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Daily news" FontSize="11" /><CheckBox x:Name="TopNewsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="News" /></Grid>
               <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus length" FontSize="11" VerticalAlignment="Center" /><WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="5m" Tag="5" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="15m" Tag="15" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="25m" Tag="25" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="50m" Tag="50" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="90m" Tag="90" Click="FocusDuration_Click" /></WrapPanel></Grid>
 
               <TextBlock Text="TOP BAR GIFS" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
@@ -522,6 +522,65 @@
             <CheckBox x:Name="UseWindowsSearchCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
                       Checked="UseWindowsSearchCheck_Changed" Unchecked="UseWindowsSearchCheck_Changed" AutomationProperties.AutomationId="UseWindowsSearch" />
           </Grid>
+          <Border Margin="0,13,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+            <StackPanel>
+              <TextBlock Text="QUICK SEARCH" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <TextBlock Text="Click a shortcut, then press the new key combination." Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
+              <Grid Margin="0,9,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Open applications" VerticalAlignment="Center" FontSize="11" />
+                <TextBox x:Name="SearchAppsHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                         Tag="Apps" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchAppsHotkey" />
+              </Grid>
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Search the web" VerticalAlignment="Center" FontSize="11" />
+                <TextBox x:Name="SearchWebHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                         Tag="Web" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchWebHotkey" />
+              </Grid>
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Search everything" VerticalAlignment="Center" FontSize="11" />
+                <TextBox x:Name="SearchCombinedHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                         Tag="Combined" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchCombinedHotkey" />
+              </Grid>
+              <TextBlock x:Name="SearchHotkeyStatus" Margin="0,7,0,0" FontSize="10" Foreground="{StaticResource MutedText}" TextWrapping="Wrap" />
+              <TextBlock Text="Disabled automatically while a fullscreen game is active" Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
+              <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Palette width" FontSize="11" /><TextBlock x:Name="SearchPaletteWidthValueText" Text="620 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                <Slider x:Name="SearchPaletteWidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="480" Maximum="900" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteWidth" />
+              </Grid>
+              <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Palette height" FontSize="11" /><TextBlock x:Name="SearchPaletteHeightValueText" Text="472 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                <Slider x:Name="SearchPaletteHeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="300" Maximum="720" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteHeight" />
+              </Grid>
+              <TextBlock Text="BACKGROUND" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Midnight" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#243142" Tag="#243142" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Slate" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#05070A" Tag="#05070A" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Black" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#241D3B" Tag="#241D3B" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Violet" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Light" />
+              </StackPanel>
+              <TextBlock Text="TEXT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="White" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#BEEBFF" Tag="#BEEBFF" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Sky" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#CFFFE5" Tag="#CFFFE5" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Mint" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#0B0F14" Tag="#0B0F14" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Black" />
+              </StackPanel>
+              <TextBlock Text="HIGHLIGHT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Sky" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Violet" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Mint" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Rose" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Amber" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated visual window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>

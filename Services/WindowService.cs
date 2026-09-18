@@ -78,6 +78,7 @@ public sealed class WindowService
             try
             {
                 using var process = Process.GetProcessById((int)pidValue);
+                if (process.ProcessName.Equals("GlassBar", StringComparison.OrdinalIgnoreCase)) return true;
                 var executablePath = TryGetProcessPath(process.Id);
                 windows.Add(new AppItem
                 {

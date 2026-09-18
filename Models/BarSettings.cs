@@ -28,6 +28,14 @@ public sealed class BarSettings
     public string AltTabBackground { get; set; } = "Glass";
     public string? AltTabBackgroundImage { get; set; }
     public double AltTabOpacity { get; set; } = 0.92;
+    public double SearchPaletteWidth { get; set; } = 620;
+    public double SearchPaletteHeight { get; set; } = 472;
+    public string SearchPaletteBackground { get; set; } = "#111722";
+    public string SearchPaletteText { get; set; } = "#F8FAFC";
+    public string SearchPaletteAccent { get; set; } = "#7DD3FC";
+    public string SearchAppsHotkey { get; set; } = "Ctrl + Alt + Space";
+    public string SearchWebHotkey { get; set; } = "Ctrl + Alt + W";
+    public string SearchCombinedHotkey { get; set; } = "Ctrl + Alt + A";
     public bool BackgroundVisible { get; set; } = true;
     public double Opacity { get; set; } = 0.82;
     public double EffectIntensity { get; set; } = 0.72;
