@@ -1,9 +1,17 @@
 const DEFAULT_ADMIN_EMAIL = "ethanhuynh365@gmail.com";
 
+function readEnv(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return String(value).replace(/^\uFEFF/, "").trim();
+  }
+  return "";
+}
+
 function serverConfig() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = readEnv("SUPABASE_URL", "VITE_SUPABASE_URL");
+  const anonKey = readEnv("SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY");
+  const serviceKey = readEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anonKey || !serviceKey) throw new Error("Supabase server configuration is missing.");
   return { url: url.replace(/\/$/, ""), anonKey, serviceKey };
 }
@@ -45,7 +53,7 @@ async function authenticateRequest(request) {
 }
 
 function adminEmail() {
-  return String(process.env.STUDIO_ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
+  return (readEnv("STUDIO_ADMIN_EMAIL") || DEFAULT_ADMIN_EMAIL).toLowerCase();
 }
 
 function isAdmin(user) {
@@ -56,4 +64,4 @@ function slugify(value) {
   return String(value || "design").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "design";
 }
 
-export { adminEmail, authenticateRequest, isAdmin, serverConfig, slugify, supabaseRequest };
+export { adminEmail, authenticateRequest, isAdmin, readEnv, serverConfig, slugify, supabaseRequest };

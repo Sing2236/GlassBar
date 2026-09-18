@@ -4,9 +4,9 @@ import publishDesign from "../api/publish-design.mjs";
 import moderation from "../api/moderation.mjs";
 
 process.env.SUPABASE_URL = "https://studio.test";
-process.env.SUPABASE_PUBLISHABLE_KEY = "anon-key";
-process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
-process.env.STUDIO_ADMIN_EMAIL = "ethanhuynh365@gmail.com";
+process.env.SUPABASE_PUBLISHABLE_KEY = "\uFEFFanon-key\r\n";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "\uFEFFservice-key\r\n";
+process.env.STUDIO_ADMIN_EMAIL = "\uFEFFethanhuynh365@gmail.com\r\n";
 
 function token(aal = "aal2") {
   return `header.${Buffer.from(JSON.stringify({ aal })).toString("base64url")}.signature`;
