@@ -12,7 +12,7 @@ The site runs locally without credentials. Editing, live previews, JSON import/e
 
 The database policies require an `aal2` Supabase session for profile changes, design publishing, and preview uploads. Uploaded assets are limited to PNG, JPG, WebP, and GIF files up to 5 MB.
 
-New designs are inserted as `pending`. Approve them by changing `status` to `approved` and setting `published_at` after moderation.
+Every design is inserted as `pending`, including designs submitted by the reviewer account. The account configured by `STUDIO_ADMIN_EMAIL` gets a private **Review** tab where pending designs can be approved or rejected. Approval sets `status` to `approved` and adds `published_at`; rejected designs remain private.
 
 ## 2. Environment and local run
 
@@ -23,6 +23,12 @@ npm install
 npm run dev
 ```
 
+## 3. Review notification email
+
+Set `RESEND_API_KEY`, `STUDIO_REVIEW_EMAIL`, and `STUDIO_EMAIL_FROM` in the server environment. Each successful submission sends a plain-text link to the private moderation queue. Email delivery is deliberately non-blocking: if the provider is down, the submission remains safely queued for review.
+
+`STUDIO_ADMIN_EMAIL` controls server-side access to the moderation API. The current reviewer account is `ethanhuynh365@gmail.com`. Admin requests still require a valid Supabase session with two-factor verification.
+
 ## Package boundary
 
-Community packages are JSON and never contain native binaries. Code-widget packages may include HTML, CSS, and JavaScript, but the website runs that code in an isolated preview with network and storage access disabled. Publishing code widgets also requires the server-side static rules and Ollama security review before moderation.
+Community packages are JSON and never contain native binaries. Code-widget packages may include HTML, CSS, and JavaScript, but the website runs that code in an isolated preview with network and storage access disabled. Code widgets remain private until the reviewer manually approves them.

@@ -209,7 +209,7 @@ export default function EditorPage() {
             <input ref={importRef} type="file" accept="application/json,.json" onChange={importPackage} hidden />
           </div>
           <div className="publish-card">
-            <div><span className="status-dot" /><h2>Publish to Community</h2><p>{design.kind === "widget" && design.widget.mode === "code" ? "Code widgets must pass static rules and an Ollama security review before moderation." : "New submissions are format-validated and held for moderation before going public."}</p></div>
+            <div><span className="status-dot" /><h2>Submit for review</h2><p>Every design is held for manual approval before it appears in the Community library.</p></div>
             {!(design.kind === "widget" && design.widget.mode === "code") && <label className="asset-picker">Optional preview image or GIF<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseAsset} /></label>}
             <button className="primary-button" onClick={publish} disabled={publishing}>{publishing ? "Submitting…" : auth.authenticated ? "Submit design" : "Sign up to publish"}</button>
             {message && <p className="editor-message" role="status">{message}</p>}

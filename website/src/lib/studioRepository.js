@@ -23,57 +23,36 @@ export function createStudioRepository() {
       const cleanUsername = (requestedUsername.length >= 3
         ? requestedUsername
         : `creator_${slugify(authorId).slice(-8)}`).slice(0, 24);
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        user_id: authorId,
-        username: cleanUsername,
-        avatar_url: user.picture || null
-      });
-      if (profileError) throw profileError;
-
-      if (document.kind === "widget" && document.widget.mode === "code") {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
-        if (!token) throw new Error("Your session expired. Sign in again before publishing.");
-        const response = await fetch("/api/publish-widget", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ document, username: cleanUsername })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          const reasons = result.security?.reasons?.join(" ");
-          throw new Error(reasons || result.error || "The widget did not pass security review.");
-        }
-        return result;
-      }
-
       let previewUrl = null;
+      let uploadedPath = null;
       if (asset) {
         const extension = asset.name.split(".").pop().toLowerCase();
-        const path = `${authorId}/${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await supabase.storage.from("design-assets").upload(path, asset, {
+        uploadedPath = `${authorId}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("design-assets").upload(uploadedPath, asset, {
           cacheControl: "3600",
           contentType: asset.type,
           upsert: false
         });
         if (uploadError) throw uploadError;
-        previewUrl = supabase.storage.from("design-assets").getPublicUrl(path).data.publicUrl;
+        previewUrl = supabase.storage.from("design-assets").getPublicUrl(uploadedPath).data.publicUrl;
       }
 
-      const { data, error } = await supabase.from("designs").insert({
-        author_id: authorId,
-        kind: document.kind,
-        name: document.metadata.name,
-        slug: `${slugify(document.metadata.name)}-${crypto.randomUUID().slice(0, 8)}`,
-        summary: document.metadata.summary,
-        tags: document.metadata.tags,
-        document,
-        preview_url: previewUrl,
-        is_published: true,
-        status: "pending"
-      }).select("id").single();
-      if (error) throw error;
-      return data;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error("Your session expired. Sign in again before publishing.");
+        const response = await fetch("/api/publish-design", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ document, username: cleanUsername, previewUrl })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "The design could not be submitted.");
+        return result;
+      } catch (error) {
+        if (uploadedPath) await supabase.storage.from("design-assets").remove([uploadedPath]).catch(() => {});
+        throw error;
+      }
     }
   };
 }
