@@ -14,7 +14,7 @@ The animation below is captured from the real app, moving from **Aurora** into *
 
 ### Switch windows
 
-![GlassBar Alt Tab switcher](docs/alt-tab-switcher.svg)
+![GlassBar Alt Tab switcher](docs/alt-tab-switcher-real.png)
 
 ### Add the widgets you want
 
