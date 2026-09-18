@@ -70,9 +70,13 @@ public partial class AudioVisualizerWindow : Window
             "Tint" => new SolidColorBrush(Color.FromArgb(34, accent.R, accent.G, accent.B)),
             _ => new SolidColorBrush(Color.FromArgb(92, 11, 18, 32))
         };
-        VisualizerSurface.BorderBrush = _settings.AudioVisualizerBackground == "Transparent"
-            ? new SolidColorBrush(Color.FromArgb(28, 255, 255, 255))
-            : new SolidColorBrush(Color.FromArgb(54, 255, 255, 255));
+        VisualizerSurface.BorderThickness = _settings.AudioVisualizerBorder == "None" ? new Thickness(0) : new Thickness(1);
+        VisualizerSurface.BorderBrush = _settings.AudioVisualizerBorder switch
+        {
+            "Accent" => new SolidColorBrush(Color.FromArgb(150, accent.R, accent.G, accent.B)),
+            "None" => Brushes.Transparent,
+            _ => new SolidColorBrush(Color.FromArgb(54, 255, 255, 255))
+        };
         BuildBars();
         PositionWindow();
     }

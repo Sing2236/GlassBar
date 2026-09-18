@@ -479,6 +479,12 @@
                 <Button Style="{StaticResource ChoiceButton}" Content="Tint" Tag="Tint" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
                 <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="Transparent" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
               </WrapPanel>
+              <TextBlock Text="BORDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,8,0,5">
+                <Button Style="{StaticResource ChoiceButton}" Content="Subtle" Tag="Subtle" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="None" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+              </WrapPanel>
               <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Sensitivity" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSensitivitySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.5" Maximum="2" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
               <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Smoothing" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSmoothingSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.65" Maximum="0.96" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
               <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Glow" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioGlowSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0" Maximum="1" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>

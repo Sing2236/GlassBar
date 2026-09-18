@@ -1525,6 +1525,7 @@ public partial class MainWindow : Window
             case "Mode": _settings.AudioVisualizerMode = value; break;
             case "Palette": _settings.AudioVisualizerPalette = value; break;
             case "Background": _settings.AudioVisualizerBackground = value; break;
+            case "Border": _settings.AudioVisualizerBorder = value; break;
             default: return;
         }
         _audioVisualizer?.ApplyConfiguration();

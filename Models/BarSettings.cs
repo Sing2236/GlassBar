@@ -25,6 +25,7 @@ public sealed class BarSettings
     public string AudioVisualizerMode { get; set; } = "Spectrum";
     public string AudioVisualizerPalette { get; set; } = "Accent";
     public string AudioVisualizerBackground { get; set; } = "Glass";
+    public string AudioVisualizerBorder { get; set; } = "Subtle";
     public double AudioVisualizerSensitivity { get; set; } = 1;
     public double AudioVisualizerSmoothing { get; set; } = 0.88;
     public double AudioVisualizerGlow { get; set; } = 0.38;
