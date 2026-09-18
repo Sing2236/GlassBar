@@ -20,6 +20,9 @@ namespace GlassBar;
 public partial class MainWindow : Window
 {
     private const int EmergencyHotkeyId = 0xB411;
+    private const int AppSearchHotkeyId = 0xB412;
+    private const int WebSearchHotkeyId = 0xB413;
+    private const int CombinedSearchHotkeyId = 0xB414;
     private readonly WindowService _windowService = new();
     private readonly SettingsService _settingsService = new();
     private readonly LicenseService _licenseService = new();
@@ -27,11 +30,13 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<AppItem> _apps = [];
     private readonly ObservableCollection<PinnedAppConfig> _pinnedApps = [];
     private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
+    private readonly Dictionary<int, HotkeyGesture> _registeredSearchHotkeys = [];
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
     private readonly DispatcherTimer _fullscreenTimer;
     private readonly bool _keepVisibleForUiTests;
     private StartMenuWindow? _startMenu;
+    private SearchPaletteWindow? _searchPalette;
     private TopOverlayWindow? _topOverlay;
     private AudioVisualizerWindow? _audioVisualizer;
     private IReadOnlyList<AppItem> _allApps = [];
@@ -83,7 +88,14 @@ public partial class MainWindow : Window
         };
         _taskbarGuardTimer.Start();
         _fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _fullscreenTimer.Tick += (_, _) => UpdateFullscreenVisibility();
+        _fullscreenTimer.Tick += (_, _) =>
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            if (_searchPalette is { IsVisible: true } && handle != nint.Zero &&
+                FullscreenWindowDetector.IsForegroundFullscreen(handle))
+                _searchPalette.ClosePalette();
+            UpdateFullscreenVisibility();
+        };
         _fullscreenTimer.Start();
         RefreshBar();
         _initializing = false;
@@ -111,6 +123,7 @@ public partial class MainWindow : Window
         HwndSource.FromHwnd(helper.Handle)?.AddHook(WndProc);
         NativeMethods.RegisterHotKey(helper.Handle, EmergencyHotkeyId,
             NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_SHIFT, (uint)'T');
+        RegisterConfiguredSearchHotkeys(helper.Handle);
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -119,10 +132,17 @@ public partial class MainWindow : Window
         _taskbarGuardTimer.Stop();
         _fullscreenTimer.Stop();
         _startMenu?.Close();
+        _searchPalette?.Close();
         _topOverlay?.Close();
         _audioVisualizer?.Close();
         var handle = new WindowInteropHelper(this).Handle;
-        if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
+        if (handle != nint.Zero)
+        {
+            NativeMethods.UnregisterHotKey(handle, EmergencyHotkeyId);
+            NativeMethods.UnregisterHotKey(handle, AppSearchHotkeyId);
+            NativeMethods.UnregisterHotKey(handle, WebSearchHotkeyId);
+            NativeMethods.UnregisterHotKey(handle, CombinedSearchHotkeyId);
+        }
         NativeTaskbar.Show();
     }
 
@@ -134,7 +154,147 @@ public partial class MainWindow : Window
             NativeTaskbar.Show();
             Application.Current.Shutdown();
         }
+        else if (msg == NativeMethods.WM_HOTKEY)
+        {
+            var mode = wParam.ToInt32() switch
+            {
+                AppSearchHotkeyId => SearchPaletteMode.Apps,
+                WebSearchHotkeyId => SearchPaletteMode.Web,
+                CombinedSearchHotkeyId => SearchPaletteMode.Combined,
+                _ => (SearchPaletteMode?)null
+            };
+            if (mode is not null)
+            {
+                handled = true;
+                OpenSearchPalette(mode.Value);
+            }
+        }
         return nint.Zero;
+    }
+
+    private void RegisterConfiguredSearchHotkeys(nint handle)
+    {
+        _registeredSearchHotkeys.Clear();
+        var failures = new List<string>();
+        foreach (var (id, label, configured, fallback) in new[]
+                 {
+                     (AppSearchHotkeyId, "Open applications", _settings.SearchAppsHotkey, "Ctrl + Alt + Space"),
+                     (WebSearchHotkeyId, "Search the web", _settings.SearchWebHotkey, "Ctrl + Alt + W"),
+                     (CombinedSearchHotkeyId, "Search everything", _settings.SearchCombinedHotkey, "Ctrl + Alt + A")
+                 })
+        {
+            if (!HotkeyGesture.TryParse(configured, out var gesture) &&
+                !HotkeyGesture.TryParse(fallback, out gesture)) continue;
+
+            if (NativeMethods.RegisterHotKey(handle, id, gesture.RegistrationModifiers, gesture.VirtualKey))
+                _registeredSearchHotkeys[id] = gesture;
+            else
+                failures.Add($"{label}: {gesture.DisplayText}");
+        }
+
+        if (failures.Count > 0)
+            SetSearchHotkeyStatus($"Windows or another app is already using {string.Join(", ", failures)}. Choose a different shortcut.", isError: true);
+    }
+
+    private void SearchHotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is not TextBox { Tag: string mode }) return;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key == Key.Escape)
+        {
+            SetSearchHotkeyStatus("Shortcut unchanged.", isError: false);
+            Keyboard.ClearFocus();
+            return;
+        }
+
+        if (!HotkeyGesture.TryCreate(key, Keyboard.Modifiers, out var candidate, out var error))
+        {
+            SetSearchHotkeyStatus(error, isError: true);
+            return;
+        }
+
+        if (HotkeyGesture.IsWindowsReserved(candidate))
+        {
+            SetSearchHotkeyStatus($"{candidate.DisplayText} is reserved by Windows. Choose another shortcut.", isError: true);
+            return;
+        }
+
+        var id = mode switch
+        {
+            "Apps" => AppSearchHotkeyId,
+            "Web" => WebSearchHotkeyId,
+            "Combined" => CombinedSearchHotkeyId,
+            _ => 0
+        };
+        if (id == 0) return;
+
+        if (HotkeyGesture.TryParse("Ctrl + Alt + Shift + T", out var emergency) &&
+            candidate.Modifiers == emergency.Modifiers && candidate.VirtualKey == emergency.VirtualKey)
+        {
+            SetSearchHotkeyStatus("That shortcut is GlassBar's emergency exit. Choose another shortcut.", isError: true);
+            return;
+        }
+
+        var overlap = GetConfiguredSearchHotkeys()
+            .FirstOrDefault(item => item.Id != id && item.Gesture.Modifiers == candidate.Modifiers &&
+                                    item.Gesture.VirtualKey == candidate.VirtualKey);
+        if (overlap.Id != 0)
+        {
+            SetSearchHotkeyStatus($"{candidate.DisplayText} already opens {overlap.Label}. Choose another shortcut.", isError: true);
+            return;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        _registeredSearchHotkeys.TryGetValue(id, out var previous);
+        if (handle != nint.Zero) NativeMethods.UnregisterHotKey(handle, id);
+        if (handle == nint.Zero || !NativeMethods.RegisterHotKey(handle, id, candidate.RegistrationModifiers, candidate.VirtualKey))
+        {
+            if (handle != nint.Zero && previous.VirtualKey != 0)
+                NativeMethods.RegisterHotKey(handle, id, previous.RegistrationModifiers, previous.VirtualKey);
+            SetSearchHotkeyStatus($"Windows or another app is already using {candidate.DisplayText}. Choose another shortcut.", isError: true);
+            return;
+        }
+
+        _registeredSearchHotkeys[id] = candidate;
+        switch (mode)
+        {
+            case "Apps":
+                _settings.SearchAppsHotkey = candidate.DisplayText;
+                SearchAppsHotkeyBox.Text = candidate.DisplayText;
+                break;
+            case "Web":
+                _settings.SearchWebHotkey = candidate.DisplayText;
+                SearchWebHotkeyBox.Text = candidate.DisplayText;
+                break;
+            case "Combined":
+                _settings.SearchCombinedHotkey = candidate.DisplayText;
+                SearchCombinedHotkeyBox.Text = candidate.DisplayText;
+                break;
+        }
+        SaveSettings();
+        SetSearchHotkeyStatus($"{mode} shortcut changed to {candidate.DisplayText}.", isError: false);
+        Keyboard.ClearFocus();
+    }
+
+    private IEnumerable<(int Id, string Label, HotkeyGesture Gesture)> GetConfiguredSearchHotkeys()
+    {
+        foreach (var (id, label, value) in new[]
+                 {
+                     (AppSearchHotkeyId, "open applications", _settings.SearchAppsHotkey),
+                     (WebSearchHotkeyId, "web search", _settings.SearchWebHotkey),
+                     (CombinedSearchHotkeyId, "combined search", _settings.SearchCombinedHotkey)
+                 })
+            if (HotkeyGesture.TryParse(value, out var gesture)) yield return (id, label, gesture);
+    }
+
+    private void SetSearchHotkeyStatus(string message, bool isError)
+    {
+        SearchHotkeyStatus.Text = message;
+        SearchHotkeyStatus.Foreground = isError
+            ? new SolidColorBrush(Color.FromRgb(251, 113, 133))
+            : new SolidColorBrush(Color.FromRgb(110, 231, 183));
     }
 
     private bool IsBarVertical => _settings.BarOrientation.Equals("Vertical", StringComparison.OrdinalIgnoreCase);
@@ -350,6 +510,13 @@ public partial class MainWindow : Window
         AltTabBackgroundImageText.Text = string.IsNullOrWhiteSpace(_settings.AltTabBackgroundImage)
             ? "No image selected"
             : $"Image: {Path.GetFileName(_settings.AltTabBackgroundImage)}";
+        SearchPaletteWidthSlider.Value = Math.Clamp(_settings.SearchPaletteWidth, 480, 900);
+        SearchPaletteHeightSlider.Value = Math.Clamp(_settings.SearchPaletteHeight, 300, 720);
+        SearchPaletteWidthValueText.Text = $"{Math.Round(SearchPaletteWidthSlider.Value)} px";
+        SearchPaletteHeightValueText.Text = $"{Math.Round(SearchPaletteHeightSlider.Value)} px";
+        SearchAppsHotkeyBox.Text = _settings.SearchAppsHotkey;
+        SearchWebHotkeyBox.Text = _settings.SearchWebHotkey;
+        SearchCombinedHotkeyBox.Text = _settings.SearchCombinedHotkey;
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         HideInFullscreenCheck.IsChecked = _settings.HideInFullscreenApps;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
@@ -635,6 +802,22 @@ public partial class MainWindow : Window
         _startMenu ??= new StartMenuWindow();
         _startMenu.ApplyAppearance(_settings);
         if (_startMenu.IsVisible) _startMenu.Hide(); else _startMenu.OpenNear(this);
+    }
+
+    private void OpenSearchPalette(SearchPaletteMode mode)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == nint.Zero || FullscreenWindowDetector.IsForegroundFullscreen(handle))
+        {
+            _searchPalette?.ClosePalette();
+            return;
+        }
+
+        SetSettingsOpen(false);
+        SetBackgroundProcessesOpen(false);
+        _startMenu?.Hide();
+        _searchPalette ??= new SearchPaletteWindow();
+        _searchPalette.Open(mode, _settings);
     }
 
     private void Effect_Click(object sender, RoutedEventArgs e)
@@ -1231,6 +1414,30 @@ public partial class MainWindow : Window
     {
         if (_initializing) return;
         _settings.AltTabOpacity = e.NewValue;
+        SaveSettings();
+    }
+
+    private void SearchPaletteSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || SearchPaletteWidthSlider is null || SearchPaletteHeightSlider is null) return;
+        _settings.SearchPaletteWidth = SearchPaletteWidthSlider.Value;
+        _settings.SearchPaletteHeight = SearchPaletteHeightSlider.Value;
+        SearchPaletteWidthValueText.Text = $"{Math.Round(_settings.SearchPaletteWidth)} px";
+        SearchPaletteHeightValueText.Text = $"{Math.Round(_settings.SearchPaletteHeight)} px";
+        SaveSettings();
+    }
+
+    private void SearchPaletteColor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string color, CommandParameter: string target } ||
+            ColorConverter.ConvertFromString(color) is not Color) return;
+        switch (target)
+        {
+            case "Background": _settings.SearchPaletteBackground = color; break;
+            case "Text": _settings.SearchPaletteText = color; break;
+            case "Accent": _settings.SearchPaletteAccent = color; break;
+            default: return;
+        }
         SaveSettings();
     }
 

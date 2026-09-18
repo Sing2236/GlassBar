@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>GlassBar</AssemblyName>
     <RootNamespace>GlassBar</RootNamespace>
-    <Version>0.5.2</Version>
-    <InformationalVersion>0.5.2</InformationalVersion>
+    <Version>0.6.0</Version>
+    <InformationalVersion>0.6.0</InformationalVersion>
     <Authors>Ethan Huynh</Authors>
     <Product>GlassBar</Product>
     <Description>A customizable transparent taskbar for Windows.</Description>
@@ -19,5 +19,8 @@
     <Compile Remove="tools\**\*.cs" />
     <EmbeddedResource Include="assets\license-public.pem" LogicalName="GlassBar.LicensePublicKey" />
     <EmbeddedResource Include="assets\update-public.pem" LogicalName="GlassBar.UpdatePublicKey" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
   </ItemGroup>
 </Project>
