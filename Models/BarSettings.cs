@@ -43,6 +43,12 @@ public sealed class BarSettings
     public string SearchPaletteBackground { get; set; } = "#111722";
     public string SearchPaletteText { get; set; } = "#F8FAFC";
     public string SearchPaletteAccent { get; set; } = "#7DD3FC";
+    public string StartMenuBackground { get; set; } = "#111722";
+    public string StartMenuAccent { get; set; } = "#7DD3FC";
+    public double StartMenuOpacity { get; set; } = 0.94;
+    public double StartMenuCornerRadius { get; set; } = 18;
+    public string StartMenuDensity { get; set; } = "Comfortable";
+    public bool StartMenuUseEffects { get; set; } = true;
     public string SearchAppsHotkey { get; set; } = "Ctrl + Alt + Space";
     public string SearchWebHotkey { get; set; } = "Ctrl + Alt + W";
     public string SearchCombinedHotkey { get; set; } = "Ctrl + Alt + A";

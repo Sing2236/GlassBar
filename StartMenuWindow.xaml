@@ -2,37 +2,51 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:GlassBar.Controls"
-        Title="GlassBar menu" Width="660" Height="610"
+        Title="GlassBar menu" Width="620" Height="570"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
-        FontFamily="{StaticResource UiFont}" Foreground="#F8FAFC"
+        FontFamily="{StaticResource UiFont}" Foreground="{DynamicResource MenuForeground}"
         AutomationProperties.AutomationId="GlassBarStartMenu"
         KeyDown="Window_KeyDown">
   <Window.Resources>
-    <SolidColorBrush x:Key="MenuMuted" Color="#94A3B8" />
-    <Style x:Key="MenuAction" TargetType="Button">
-      <Setter Property="Foreground" Value="#EAF2FA" />
+    <SolidColorBrush x:Key="MenuForeground" Color="#F3F7FB" />
+    <SolidColorBrush x:Key="MenuMuted" Color="#9BAABD" />
+    <SolidColorBrush x:Key="MenuAccent" Color="#7DD3FC" />
+    <SolidColorBrush x:Key="MenuAccentSoft" Color="#2A7DD3FC" />
+    <SolidColorBrush x:Key="MenuHover" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="MenuPressed" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="MenuDivider" Color="#24FFFFFF" />
+
+    <Style x:Key="MenuIconButton" TargetType="Button">
+      <Setter Property="Width" Value="38" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="8">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#18FFFFFF" /></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2AFFFFFF" /></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource MenuHover}" /></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource MenuPressed}" /></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource MenuAccent}" />
+                <Setter TargetName="Surface" Property="BorderThickness" Value="1" />
+              </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
     </Style>
+
     <Style x:Key="SearchResultItem" TargetType="ListBoxItem">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="#F8FAFC" />
+      <Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
@@ -42,13 +56,41 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListBoxItem">
-            <Border x:Name="ResultSurface" Background="{TemplateBinding Background}" CornerRadius="12" Padding="10,7">
+            <Border x:Name="ResultSurface" Background="{TemplateBinding Background}" CornerRadius="8" Padding="9,6"
+                    BorderBrush="Transparent" BorderThickness="1">
               <ContentPresenter />
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="#18FFFFFF" /></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="#2A7DD3FC" /></Trigger>
-              <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ResultSurface" Property="BorderBrush" Value="#707DD3FC" /><Setter TargetName="ResultSurface" Property="BorderThickness" Value="1" /></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="{DynamicResource MenuHover}" /></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="ResultSurface" Property="Background" Value="{DynamicResource MenuAccentSoft}" /></Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ResultSurface" Property="BorderBrush" Value="{DynamicResource MenuAccent}" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="PowerAction" TargetType="Button">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource MenuHover}" /></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource MenuPressed}" /></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource MenuAccent}" />
+                <Setter TargetName="Surface" Property="BorderThickness" Value="1" />
+              </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -56,104 +98,148 @@
     </Style>
   </Window.Resources>
 
-  <Border x:Name="MenuSurface" Margin="14" CornerRadius="26" Background="#E6111722" BorderBrush="#35FFFFFF" BorderThickness="1"
-          ClipToBounds="True" Opacity="0" RenderTransformOrigin="0.5,1">
-    <Border.RenderTransform><ScaleTransform x:Name="MenuScale" ScaleX="0.965" ScaleY="0.965" /></Border.RenderTransform>
-    <Border.Effect><DropShadowEffect BlurRadius="38" ShadowDepth="10" Opacity="0.55" Color="#020617" /></Border.Effect>
-    <Grid>
+  <Border x:Name="MenuSurface" Margin="12" CornerRadius="18" Background="#F0111722"
+          BorderBrush="#32FFFFFF" BorderThickness="1" ClipToBounds="True"
+          Opacity="0" RenderTransformOrigin="0.5,1">
+    <Border.RenderTransform><ScaleTransform x:Name="MenuScale" ScaleX="0.98" ScaleY="0.98" /></Border.RenderTransform>
+    <Border.Effect><DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.5" Color="#020617" /></Border.Effect>
+
+    <Grid x:Name="MenuRoot" PreviewMouseLeftButtonDown="MenuRoot_PreviewMouseLeftButtonDown">
       <controls:AmbientEffect x:Name="MenuEffectsLayer" Opacity="0" IsHitTestVisible="False"
                               AutomationProperties.AutomationId="StartMenuEffects" />
-      <Rectangle Fill="#24111722" IsHitTestVisible="False" />
-      <Grid x:Name="MenuContent" Margin="24" Opacity="0">
-        <Grid.RenderTransform><TranslateTransform x:Name="MenuContentOffset" Y="12" /></Grid.RenderTransform>
+      <Rectangle Fill="#12111722" IsHitTestVisible="False" />
+
+      <Grid x:Name="MenuContent" Margin="22" Opacity="0">
+        <Grid.RenderTransform><TranslateTransform x:Name="MenuContentOffset" Y="8" /></Grid.RenderTransform>
         <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-      <Grid>
-        <Border Height="50" Background="#16FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="15">
+        <DockPanel Margin="2,0,2,15">
+          <TextBlock DockPanel.Dock="Right" Text="ESC to close" FontSize="10" Foreground="{DynamicResource MenuMuted}" VerticalAlignment="Center" />
+          <StackPanel>
+            <TextBlock Text="Apps" FontSize="21" FontWeight="SemiBold" />
+            <TextBlock Text="Find and open anything on this PC" FontSize="11" Foreground="{DynamicResource MenuMuted}" Margin="0,2,0,0" />
+          </StackPanel>
+        </DockPanel>
+
+        <Border Grid.Row="1" Height="46" Background="#12FFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1" CornerRadius="10">
           <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition /></Grid.ColumnDefinitions>
-            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#AFC5D8"
+            <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition /></Grid.ColumnDefinitions>
+            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource MenuMuted}"
                        VerticalAlignment="Center" HorizontalAlignment="Center" />
             <TextBox x:Name="SearchBox" Grid.Column="1" Background="Transparent" BorderThickness="0"
-                     Foreground="#F8FAFC" CaretBrush="#7DD3FC" FontSize="16" VerticalContentAlignment="Center"
-                     Padding="0,0,12,0" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown"
-                     AutomationProperties.AutomationId="StartMenuSearch" />
-            <TextBlock x:Name="SearchHint" Grid.Column="1" Text="Search apps, settings, files, and the web" Foreground="#718196" FontSize="16"
-                       VerticalAlignment="Center" IsHitTestVisible="False" />
+                     Foreground="{DynamicResource MenuForeground}" CaretBrush="{DynamicResource MenuAccent}" FontSize="14"
+                     VerticalContentAlignment="Center" Padding="0,0,12,0" TextChanged="SearchBox_TextChanged"
+                     KeyDown="SearchBox_KeyDown" AutomationProperties.AutomationId="StartMenuSearch" />
+            <TextBlock x:Name="SearchHint" Grid.Column="1" Text="Search apps, settings, files, and the web"
+                       Foreground="{DynamicResource MenuMuted}" FontSize="14" VerticalAlignment="Center" IsHitTestVisible="False" />
           </Grid>
         </Border>
-      </Grid>
 
-      <DockPanel Grid.Row="1" Margin="4,22,4,12" LastChildFill="False">
-        <TextBlock x:Name="SectionTitle" Text="APPS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MenuMuted}" />
-        <TextBlock x:Name="CountText" DockPanel.Dock="Right" FontSize="10" Foreground="{StaticResource MenuMuted}" />
-      </DockPanel>
+        <DockPanel Grid.Row="2" Margin="3,17,3,8" LastChildFill="False">
+          <TextBlock x:Name="SectionTitle" Text="TOP APPS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MenuMuted}" />
+          <TextBlock x:Name="CountText" DockPanel.Dock="Right" FontSize="10" Foreground="{DynamicResource MenuMuted}" />
+        </DockPanel>
 
-      <Grid Grid.Row="2">
-        <ListBox x:Name="AppResults" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC"
-                 ItemContainerStyle="{StaticResource SearchResultItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 PreviewMouseLeftButtonUp="AppResults_PreviewMouseLeftButtonUp"
-                 AutomationProperties.AutomationId="StartMenuResults">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <Grid Height="48" AutomationProperties.Name="{Binding Name}">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="42" />
-                  <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Grid Width="34" Height="34" VerticalAlignment="Center">
-                  <Border x:Name="FallbackIcon" CornerRadius="9" Background="#1FFFFFFF" Visibility="Collapsed">
-                    <TextBlock Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AFC5D8" />
-                  </Border>
-                  <Image x:Name="AppIcon" Source="{Binding Icon}" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+        <Grid Grid.Row="3">
+          <ListBox x:Name="AppResults" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource MenuForeground}"
+                   ItemContainerStyle="{StaticResource SearchResultItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto" PreviewMouseLeftButtonUp="AppResults_PreviewMouseLeftButtonUp"
+                   AutomationProperties.AutomationId="StartMenuResults">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Height="46" AutomationProperties.Name="{Binding Name}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Grid Width="30" Height="30" VerticalAlignment="Center">
+                    <Border x:Name="FallbackIcon" CornerRadius="7" Background="#18FFFFFF" Visibility="Collapsed">
+                      <TextBlock Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource MenuMuted}" />
+                    </Border>
+                    <Image x:Name="AppIcon" Source="{Binding Icon}" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
+                  </Grid>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="3,0,12,0">
+                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource MenuMuted}" FontSize="10" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Kind}" Foreground="{DynamicResource MenuMuted}" FontSize="9"
+                             FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,4,0" />
                 </Grid>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,12,0">
-                  <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource MenuMuted}" FontSize="10" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-                <Border Grid.Column="2" Background="#18FFFFFF" CornerRadius="8" Padding="8,4" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding Kind}" Foreground="#AFC5D8" FontSize="9" FontWeight="SemiBold" />
-                </Border>
-              </Grid>
-              <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="AppIcon" Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" /></DataTrigger>
-              </DataTemplate.Triggers>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-        <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-          <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="#64748B" HorizontalAlignment="Center" />
-          <TextBlock Text="No matching results" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,0" />
-          <TextBlock Text="Try a shorter search" Foreground="{StaticResource MenuMuted}" Margin="0,4,0,0" />
-        </StackPanel>
-      </Grid>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                    <Setter TargetName="AppIcon" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
 
-        <Border Grid.Row="3" BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0" Margin="0,15,0,0" Padding="0,14,0,0">
-          <DockPanel>
-            <StackPanel Orientation="Horizontal">
-              <Border Width="34" Height="34" CornerRadius="11" Background="#267DD3FC">
-                <TextBlock Text="E" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Border>
-              <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Your apps" FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="GlassBar launcher" Foreground="{StaticResource MenuMuted}" FontSize="10" />
-              </StackPanel>
-            </StackPanel>
+          <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="24" Foreground="{DynamicResource MenuMuted}" HorizontalAlignment="Center" />
+            <TextBlock Text="No matching results" FontSize="14" FontWeight="SemiBold" Margin="0,10,0,0" />
+            <TextBlock Text="Try a shorter search" Foreground="{DynamicResource MenuMuted}" FontSize="11" Margin="0,3,0,0" />
+          </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="4" BorderBrush="{DynamicResource MenuDivider}" BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,12,0,0">
+          <DockPanel LastChildFill="False">
+            <TextBlock Text="GlassBar" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MenuMuted}"
+                       VerticalAlignment="Center" Margin="3,0,0,0" />
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-              <Button Style="{StaticResource MenuAction}" Click="Documents_Click" ToolTip="Documents" FontFamily="Segoe MDL2 Assets" FontSize="17" Content="&#xE8A5;" />
-              <Button Style="{StaticResource MenuAction}" Click="Settings_Click" ToolTip="Windows Settings" FontFamily="Segoe MDL2 Assets" FontSize="17" Content="&#xE713;" />
-              <Button Style="{StaticResource MenuAction}" Click="Lock_Click" ToolTip="Lock" FontFamily="Segoe MDL2 Assets" FontSize="17" Content="&#xE72E;" />
+              <Button Style="{StaticResource MenuIconButton}" Click="Documents_Click" ToolTip="Documents" AutomationProperties.Name="Documents">
+                <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE8A5;" />
+              </Button>
+              <Button Style="{StaticResource MenuIconButton}" Click="Settings_Click" ToolTip="Windows Settings" AutomationProperties.Name="Windows Settings">
+                <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE713;" />
+              </Button>
+              <Button x:Name="PowerButton" Style="{StaticResource MenuIconButton}" Click="PowerButton_Click" ToolTip="Power"
+                      AutomationProperties.Name="Power" AutomationProperties.AutomationId="StartMenuPower">
+                <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="17" Text="&#xE7E8;" />
+              </Button>
             </StackPanel>
           </DockPanel>
         </Border>
       </Grid>
+
+      <Border x:Name="PowerFlyout" Width="218" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+              Margin="0,0,20,66" Padding="7" Visibility="Collapsed" Panel.ZIndex="10"
+              Background="#FA151C27" BorderBrush="#3AFFFFFF" BorderThickness="1" CornerRadius="10"
+              AutomationProperties.AutomationId="StartMenuPowerFlyout">
+        <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="6" Opacity="0.48" Color="#020617" /></Border.Effect>
+        <StackPanel>
+          <TextBlock Text="POWER" Margin="10,6,10,5" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource MenuMuted}" />
+          <Button Style="{StaticResource PowerAction}" Tag="Sleep" Click="PowerAction_Click" AutomationProperties.Name="Sleep">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition /></Grid.ColumnDefinitions>
+              <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE708;" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Sleep" FontSize="12" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <Button Style="{StaticResource PowerAction}" Tag="Restart" Click="PowerAction_Click" AutomationProperties.Name="Restart">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition /></Grid.ColumnDefinitions>
+              <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE72C;" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Restart" FontSize="12" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <Button Style="{StaticResource PowerAction}" Tag="ShutDown" Click="PowerAction_Click" AutomationProperties.Name="Shut down">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition /></Grid.ColumnDefinitions>
+              <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE7E8;" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Shut down" FontSize="12" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <Border Height="1" Background="{DynamicResource MenuDivider}" Margin="7,5" />
+          <Button Style="{StaticResource PowerAction}" Tag="Lock" Click="PowerAction_Click" AutomationProperties.Name="Lock">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition /></Grid.ColumnDefinitions>
+              <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE72E;" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Lock" FontSize="12" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </Border>
     </Grid>
   </Border>
 </Window>
