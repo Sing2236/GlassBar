@@ -125,6 +125,9 @@ internal static class NativeMethods
     internal static extern bool IsIconic(nint hWnd);
 
     [DllImport("user32.dll")]
+    internal static extern bool IsZoomed(nint hWnd);
+
+    [DllImport("user32.dll")]
     internal static extern bool PrintWindow(nint hWnd, nint hdcBlt, uint flags);
 
     [DllImport("user32.dll")]

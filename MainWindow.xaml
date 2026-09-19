@@ -658,7 +658,7 @@
           </Grid>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Hide in fullscreen apps" FontWeight="SemiBold" /><TextBlock Text="Turn off to keep GlassBar visible over games and videos" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+            <StackPanel><TextBlock Text="Hide in fullscreen games" FontWeight="SemiBold" /><TextBlock Text="Browser videos and media players keep GlassBar visible" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="HideInFullscreenCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideInFullscreenCheck_Click" AutomationProperties.AutomationId="HideInFullscreenApps" />
           </Grid>
           <Grid Margin="0,17,0,0">
