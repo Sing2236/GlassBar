@@ -203,6 +203,10 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     internal static extern bool LockWorkStation();
 
+    [DllImport("powrprof.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern nint SendMessage(nint hWnd, int message, nint wParam, nint lParam);
 

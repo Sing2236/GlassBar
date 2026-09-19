@@ -514,6 +514,11 @@ public partial class MainWindow : Window
         SearchPaletteHeightSlider.Value = Math.Clamp(_settings.SearchPaletteHeight, 300, 720);
         SearchPaletteWidthValueText.Text = $"{Math.Round(SearchPaletteWidthSlider.Value)} px";
         SearchPaletteHeightValueText.Text = $"{Math.Round(SearchPaletteHeightSlider.Value)} px";
+        StartMenuEffectsCheck.IsChecked = _settings.StartMenuUseEffects;
+        StartMenuOpacitySlider.Value = Math.Clamp(_settings.StartMenuOpacity, 0.55, 0.99);
+        StartMenuCornerSlider.Value = Math.Clamp(_settings.StartMenuCornerRadius, 8, 26);
+        StartMenuOpacityValueText.Text = $"{Math.Round(StartMenuOpacitySlider.Value * 100)}%";
+        StartMenuCornerValueText.Text = $"{Math.Round(StartMenuCornerSlider.Value)} px";
         SearchAppsHotkeyBox.Text = _settings.SearchAppsHotkey;
         SearchWebHotkeyBox.Text = _settings.SearchWebHotkey;
         SearchCombinedHotkeyBox.Text = _settings.SearchCombinedHotkey;
@@ -1445,6 +1450,49 @@ public partial class MainWindow : Window
             case "Accent": _settings.SearchPaletteAccent = color; break;
             default: return;
         }
+        SaveSettings();
+    }
+
+    private void StartMenuEffectsCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        _settings.StartMenuUseEffects = StartMenuEffectsCheck.IsChecked == true;
+        ApplyStartMenuAppearance();
+    }
+
+    private void StartMenuDensity_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string density } || density is not ("Compact" or "Comfortable")) return;
+        _settings.StartMenuDensity = density;
+        ApplyStartMenuAppearance();
+    }
+
+    private void StartMenuColor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string color, CommandParameter: string target } ||
+            ColorConverter.ConvertFromString(color) is not Color) return;
+        switch (target)
+        {
+            case "Background": _settings.StartMenuBackground = color; break;
+            case "Accent": _settings.StartMenuAccent = color; break;
+            default: return;
+        }
+        ApplyStartMenuAppearance();
+    }
+
+    private void StartMenuAppearanceSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing || StartMenuOpacitySlider is null || StartMenuCornerSlider is null) return;
+        _settings.StartMenuOpacity = StartMenuOpacitySlider.Value;
+        _settings.StartMenuCornerRadius = StartMenuCornerSlider.Value;
+        StartMenuOpacityValueText.Text = $"{Math.Round(_settings.StartMenuOpacity * 100)}%";
+        StartMenuCornerValueText.Text = $"{Math.Round(_settings.StartMenuCornerRadius)} px";
+        ApplyStartMenuAppearance();
+    }
+
+    private void ApplyStartMenuAppearance()
+    {
+        _startMenu?.ApplyAppearance(_settings);
         SaveSettings();
     }
 

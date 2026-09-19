@@ -23,6 +23,7 @@ public partial class StartMenuWindow : Window
         Deactivated += (_, _) =>
         {
             _searchCancellation?.Cancel();
+            PowerFlyout.Visibility = Visibility.Collapsed;
             Hide();
         };
         ShowResults(StartMenuService.GetSystemApps().Take(24).ToList(), "");
@@ -33,6 +34,7 @@ public partial class StartMenuWindow : Window
         Owner = taskbar;
         Left = Math.Max(12, Math.Min(taskbar.Left, SystemParameters.PrimaryScreenWidth - Width - 12));
         Top = Math.Max(12, taskbar.Top - Height - 10);
+        PowerFlyout.Visibility = Visibility.Collapsed;
         Show();
         Activate();
         SearchBox.Focus();
@@ -47,15 +49,15 @@ public partial class StartMenuWindow : Window
         MenuSurface.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease });
         MenuScale.BeginAnimation(ScaleTransform.ScaleXProperty,
-            new DoubleAnimation(0.965, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+            new DoubleAnimation(0.98, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
         MenuScale.BeginAnimation(ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(0.965, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+            new DoubleAnimation(0.98, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
 
         var contentDelay = TimeSpan.FromMilliseconds(45);
         MenuContent.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190)) { BeginTime = contentDelay, EasingFunction = ease });
         MenuContentOffset.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(240)) { BeginTime = contentDelay, EasingFunction = ease });
+            new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(210)) { BeginTime = contentDelay, EasingFunction = ease });
         MenuEffectsLayer.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, _effectsEnabled ? 0.78 : 0, TimeSpan.FromMilliseconds(360))
             { BeginTime = TimeSpan.FromMilliseconds(70), EasingFunction = ease });
@@ -63,14 +65,48 @@ public partial class StartMenuWindow : Window
 
     public void ApplyAppearance(BarSettings settings)
     {
-        _effectsEnabled = !settings.Effect.Equals("Off", StringComparison.OrdinalIgnoreCase);
+        _effectsEnabled = settings.StartMenuUseEffects && !settings.Effect.Equals("Off", StringComparison.OrdinalIgnoreCase);
         MenuEffectsLayer.Visibility = _effectsEnabled ? Visibility.Visible : Visibility.Collapsed;
         MenuEffectsLayer.Mode = settings.Effect;
         MenuEffectsLayer.Intensity = Math.Clamp(settings.EffectIntensity * 0.82, 0.05, 0.82);
         MenuEffectsLayer.CustomEffect = settings.CustomEffect;
-        if (ColorConverter.ConvertFromString(settings.Accent) is Color accent)
+        if (TryParseColor(settings.StartMenuBackground, out var background))
+        {
+            var alpha = (byte)Math.Round(Math.Clamp(settings.StartMenuOpacity, 0.55, 0.99) * 255);
+            MenuSurface.Background = new SolidColorBrush(Color.FromArgb(alpha, background.R, background.G, background.B));
+            PowerFlyout.Background = new SolidColorBrush(Color.FromArgb(250, background.R, background.G, background.B));
+        }
+
+        if (TryParseColor(settings.StartMenuAccent, out var accent))
+        {
+            Resources["MenuAccent"] = new SolidColorBrush(accent);
+            Resources["MenuAccentSoft"] = new SolidColorBrush(Color.FromArgb(42, accent.R, accent.G, accent.B));
             MenuEffectsLayer.Accent = accent;
+        }
+
+        var cornerRadius = Math.Clamp(settings.StartMenuCornerRadius, 8, 26);
+        MenuSurface.CornerRadius = new CornerRadius(cornerRadius);
+        var compact = settings.StartMenuDensity.Equals("Compact", StringComparison.OrdinalIgnoreCase);
+        Width = compact ? 560 : 620;
+        Height = compact ? 500 : 570;
+        MenuContent.Margin = compact ? new Thickness(18) : new Thickness(22);
         MenuEffectsLayer.RefreshCustomEffect(settings.Effect == "Custom");
+    }
+
+    private static bool TryParseColor(string value, out Color color)
+    {
+        try
+        {
+            if (ColorConverter.ConvertFromString(value) is Color parsed)
+            {
+                color = parsed;
+                return true;
+            }
+        }
+        catch (Exception) { }
+
+        color = default;
+        return false;
     }
 
     private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -133,7 +169,12 @@ public partial class StartMenuWindow : Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape) { Hide(); e.Handled = true; }
+        if (e.Key != Key.Escape) return;
+        if (PowerFlyout.Visibility == Visibility.Visible)
+            PowerFlyout.Visibility = Visibility.Collapsed;
+        else
+            Hide();
+        e.Handled = true;
     }
 
     private void MoveSelection(int step)
@@ -167,10 +208,48 @@ public partial class StartMenuWindow : Window
     private void Documents_Click(object sender, RoutedEventArgs e) => LaunchPath(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
     private void Settings_Click(object sender, RoutedEventArgs e) => LaunchPath("ms-settings:");
 
-    private void Lock_Click(object sender, RoutedEventArgs e)
+    private void MenuRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (PowerFlyout.Visibility != Visibility.Visible || e.OriginalSource is not DependencyObject source) return;
+        if (!IsWithin(source, PowerFlyout) && !IsWithin(source, PowerButton))
+            PowerFlyout.Visibility = Visibility.Collapsed;
+    }
+
+    private static bool IsWithin(DependencyObject source, DependencyObject ancestor)
+    {
+        for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+            if (ReferenceEquals(current, ancestor)) return true;
+        return false;
+    }
+
+    private void PowerButton_Click(object sender, RoutedEventArgs e)
+    {
+        PowerFlyout.Visibility = PowerFlyout.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void PowerAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string action }) return;
+        PowerFlyout.Visibility = Visibility.Collapsed;
         Hide();
-        SystemActions.LockComputer();
+
+        try
+        {
+            switch (action)
+            {
+                case "Sleep": SystemActions.SleepComputer(); break;
+                case "Restart": SystemActions.RestartComputer(); break;
+                case "ShutDown": SystemActions.ShutDownComputer(); break;
+                case "Lock": SystemActions.LockComputer(); break;
+            }
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"Windows could not complete that power action.\n\n{exception.Message}", "Power action failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void LaunchPath(string path)

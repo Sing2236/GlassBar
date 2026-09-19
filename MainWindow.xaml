@@ -555,6 +555,61 @@
               <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="TopStickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="TopStickerOpacitySlider" /></Grid>
             </StackPanel>
           </Border>
+          <Border Margin="0,17,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
+                  AutomationProperties.AutomationId="StartMenuAppearanceOptions">
+            <StackPanel>
+              <TextBlock Text="WINDOWS MENU" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <TextBlock Text="Shape the launcher without changing the rest of GlassBar" Margin="0,4,0,0"
+                         Foreground="{StaticResource MutedText}" FontSize="10" TextWrapping="Wrap" />
+
+              <Grid Margin="0,12,8,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="Ambient effect" FontSize="11" />
+                  <TextBlock Text="Use the current bar animation" Foreground="{StaticResource MutedText}" FontSize="10" />
+                </StackPanel>
+                <CheckBox x:Name="StartMenuEffectsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                          Click="StartMenuEffectsCheck_Click" AutomationProperties.AutomationId="StartMenuEffectsEnabled" />
+              </Grid>
+
+              <TextBlock Text="LAYOUT DENSITY" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <WrapPanel Margin="0,7,0,0">
+                <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="StartMenuDensity_Click" />
+                <Button Style="{StaticResource ChoiceButton}" Content="Comfortable" Tag="Comfortable" Click="StartMenuDensity_Click" />
+              </WrapPanel>
+
+              <TextBlock Text="SURFACE" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Midnight" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#1A2431" Tag="#1A2431" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Slate" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#080B10" Tag="#080B10" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Black" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#16251F" Tag="#16251F" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Forest" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#271B20" Tag="#271B20" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Garnet" />
+              </StackPanel>
+
+              <TextBlock Text="HIGHLIGHT" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Sky" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Violet" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Mint" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Rose" />
+                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Amber" />
+              </StackPanel>
+
+              <Grid Margin="0,11,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Surface opacity" FontSize="11" /><TextBlock x:Name="StartMenuOpacityValueText" Text="94%" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                <Slider x:Name="StartMenuOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.55" Maximum="0.99"
+                        ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuOpacity" />
+              </Grid>
+              <Grid Margin="0,7,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Corner shape" FontSize="11" /><TextBlock x:Name="StartMenuCornerValueText" Text="18 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                <Slider x:Name="StartMenuCornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="8" Maximum="26" TickFrequency="2"
+                        ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuCornerRadius" />
+              </Grid>
+            </StackPanel>
+          </Border>
           <Grid Margin="0,17,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Use Windows search" FontWeight="SemiBold" /><TextBlock Text="Magnifier opens the original Windows Search" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
