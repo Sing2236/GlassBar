@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
+using GlassBar.Models;
 using GlassBar.Services;
 
 namespace GlassBar;
@@ -14,6 +16,8 @@ public partial class App : Application
     private bool _ownsMutex;
     private DispatcherTimer? _updateTimer;
     private int _updateCheckRunning;
+    private AvailableUpdate? _pendingUpdate;
+    private Version? _dismissedUpdateVersion;
     private CancellationTokenSource? _commandListenerCancellation;
     private AltTabService? _altTabService;
     private const string CommandPipe = "GlassBar.DesignCommands.v1";
@@ -51,7 +55,7 @@ public partial class App : Application
         StartCommandListener(window);
         var initialCommand = e.Args.FirstOrDefault(arg => arg.StartsWith("glassbar:", StringComparison.OrdinalIgnoreCase));
         if (initialCommand is not null) Dispatcher.BeginInvoke(async () => await window.ImportCommunityDesignAsync(initialCommand));
-        if (!safeMode) StartAutomaticUpdates();
+        if (!safeMode) StartAutomaticUpdates(window);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -126,30 +130,64 @@ public partial class App : Application
         catch { }
     }
 
-    private void StartAutomaticUpdates()
+    private void StartAutomaticUpdates(MainWindow window)
     {
         _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(4) };
-        _updateTimer.Tick += async (_, _) => await CheckForUpdateAsync();
+        _updateTimer.Tick += async (_, _) => await CheckForUpdateAsync(window);
         _updateTimer.Start();
-        _ = CheckForUpdateAfterStartupAsync();
+        _ = CheckForUpdateAfterStartupAsync(window);
     }
 
-    private async Task CheckForUpdateAfterStartupAsync()
+    private async Task CheckForUpdateAfterStartupAsync(MainWindow window)
     {
         await Task.Delay(TimeSpan.FromSeconds(12));
-        await CheckForUpdateAsync();
+        await CheckForUpdateAsync(window);
     }
 
-    private async Task CheckForUpdateAsync()
+    private async Task CheckForUpdateAsync(MainWindow window)
     {
         if (Interlocked.Exchange(ref _updateCheckRunning, 1) != 0) return;
         try
         {
-            if (await UpdateService.TryLaunchUpdateAsync()) Shutdown();
+            var update = _pendingUpdate ?? await UpdateService.CheckForUpdateAsync();
+            if (update is null)
+            {
+                SetUpdateCheckInterval(TimeSpan.FromHours(4));
+                return;
+            }
+
+            if (_dismissedUpdateVersion is not null && update.Version.Equals(_dismissedUpdateVersion))
+            {
+                _pendingUpdate = null;
+                SetUpdateCheckInterval(TimeSpan.FromHours(4));
+                return;
+            }
+
+            var handle = new WindowInteropHelper(window).Handle;
+            if (handle != nint.Zero && FullscreenWindowDetector.IsForegroundFullscreen(handle))
+            {
+                _pendingUpdate = update;
+                SetUpdateCheckInterval(TimeSpan.FromMinutes(5));
+                return;
+            }
+
+            _pendingUpdate = null;
+            SetUpdateCheckInterval(TimeSpan.FromHours(4));
+            var prompt = new UpdatePromptWindow(update) { Owner = window };
+            var result = prompt.ShowDialog();
+            if (result == true && prompt.UpdateLaunched)
+                Shutdown();
+            else
+                _dismissedUpdateVersion = update.Version;
         }
         finally
         {
             Interlocked.Exchange(ref _updateCheckRunning, 0);
         }
+    }
+
+    private void SetUpdateCheckInterval(TimeSpan interval)
+    {
+        if (_updateTimer is not null) _updateTimer.Interval = interval;
     }
 }

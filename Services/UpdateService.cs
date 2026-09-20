@@ -15,7 +15,10 @@ internal static class UpdateService
         "https://github.com/Sing2236/GlassBar/releases/latest/download/update.json";
     private static readonly HttpClient Client = CreateClient();
 
-    internal static async Task<bool> TryLaunchUpdateAsync()
+    internal static Version CurrentVersion
+        => Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
+
+    internal static async Task<AvailableUpdate?> CheckForUpdateAsync()
     {
         try
         {
@@ -28,13 +31,27 @@ internal static class UpdateService
             if (!Version.TryParse(manifest.Version, out var availableVersion))
                 throw new InvalidDataException("The update manifest version is invalid.");
 
-            var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
-            if (availableVersion <= currentVersion) return false;
+            if (availableVersion <= CurrentVersion) return null;
             if (!TryGetInstallerUri(manifest.InstallerUrl, out var installerUri))
                 throw new InvalidDataException("The update installer URL is not trusted.");
+            ValidateChecksum(manifest.Sha256);
 
-            var installerPath = await DownloadAndVerifyAsync(installerUri, availableVersion, manifest.Sha256);
-            LogStatus($"Update {availableVersion} downloaded and verified. Starting the installer.");
+            LogStatus($"Update {availableVersion} is available and ready for user confirmation.");
+            return new AvailableUpdate(availableVersion, installerUri, manifest.Sha256);
+        }
+        catch (Exception exception)
+        {
+            LogFailure(exception);
+            return null;
+        }
+    }
+
+    internal static async Task<bool> DownloadAndLaunchAsync(AvailableUpdate update)
+    {
+        try
+        {
+            var installerPath = await DownloadAndVerifyAsync(update.InstallerUri, update.Version, update.Sha256);
+            LogStatus($"Update {update.Version} downloaded and verified after user confirmation. Starting the installer.");
             return LaunchUpdateBootstrap(installerPath);
         }
         catch (Exception exception)
@@ -67,8 +84,7 @@ internal static class UpdateService
 
     private static async Task<string> DownloadAndVerifyAsync(Uri installerUri, Version version, string expectedSha256)
     {
-        if (expectedSha256.Length != 64 || expectedSha256.Any(character => !Uri.IsHexDigit(character)))
-            throw new InvalidDataException("The update checksum is invalid.");
+        ValidateChecksum(expectedSha256);
 
         var updateFolder = Path.Combine(Path.GetTempPath(), "GlassBar", "updates");
         Directory.CreateDirectory(updateFolder);
@@ -95,6 +111,12 @@ internal static class UpdateService
 
         File.Move(partialPath, installerPath, true);
         return installerPath;
+    }
+
+    private static void ValidateChecksum(string expectedSha256)
+    {
+        if (expectedSha256.Length != 64 || expectedSha256.Any(character => !Uri.IsHexDigit(character)))
+            throw new InvalidDataException("The update checksum is invalid.");
     }
 
     private static bool LaunchUpdateBootstrap(string installerPath)
