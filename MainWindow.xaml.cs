@@ -27,7 +27,8 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService = new();
     private readonly LicenseService _licenseService = new();
     private readonly CommunityDesignService _communityDesignService = new();
-    private readonly ObservableCollection<AppItem> _apps = [];
+    private readonly ObservableCollection<TaskbarIconGroup> _apps = [];
+    private readonly NotificationBadgeService _notificationBadgeService = new();
     private readonly ObservableCollection<PinnedAppConfig> _pinnedApps = [];
     private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
     private readonly Dictionary<int, HotkeyGesture> _registeredSearchHotkeys = [];
@@ -40,6 +41,11 @@ public partial class MainWindow : Window
     private TopOverlayWindow? _topOverlay;
     private AudioVisualizerWindow? _audioVisualizer;
     private IReadOnlyList<AppItem> _allApps = [];
+    private List<TaskbarIconGroup> _allGroups = [];
+    // Keyed by ProcessName. Fan-out state has to survive the 1s refresh
+    // timer tick rebuilding groups from scratch, or an expanded stack would
+    // flicker shut about a second after the user opened it.
+    private readonly Dictionary<string, bool> _expandedGroupState = [];
     private int _appPage;
     private bool _pageAnimating;
     private StickerConfig? _selectedSticker;
@@ -64,6 +70,7 @@ public partial class MainWindow : Window
         WidthSlider.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(WidthSlider_DragCompleted));
         _settings = _settingsService.Load();
         if (safeMode) _settings.HideNativeTaskbar = false;
+        if (!safeMode && _settings.ShowNotificationBadges) _notificationBadgeService.RequestAccessAsync();
         RunningApps.ItemsSource = _apps;
         PinnedApps.ItemsSource = _pinnedApps;
         BackgroundProcessesList.ItemsSource = _backgroundProcesses;
@@ -428,17 +435,66 @@ public partial class MainWindow : Window
         DateText.Text = now.ToString("MMM d").ToUpperInvariant();
 
         _allApps = _windowService.GetOpenWindows();
+        if (_settings.ShowNotificationBadges)
+            foreach (var app in _allApps)
+                app.NotificationCount = _notificationBadgeService.GetCount(app);
+        _allGroups = BuildGroups(_allApps);
         if (!_pageAnimating) PopulateAppPage();
+    }
+
+    /// <summary>
+    /// Wraps each open window in its own single-item group (identical to
+    /// pre-stacking behavior) unless "Group Stacked Icons" is on, in which
+    /// case windows sharing a process become one group. Preserves each
+    /// still-valid group's fan-out (IsExpanded) state across this rebuild --
+    /// otherwise the 1s refresh timer would collapse an open stack almost
+    /// immediately after the user opened it.
+    /// </summary>
+    private List<TaskbarIconGroup> BuildGroups(IReadOnlyList<AppItem> apps)
+    {
+        if (!_settings.GroupStackedIcons)
+        {
+            _expandedGroupState.Clear();
+            return apps.Select(app => new TaskbarIconGroup
+            {
+                ProcessName = app.ProcessName,
+                Icon = app.Icon,
+                Windows = [app]
+            }).ToList();
+        }
+
+        var groups = apps
+            .GroupBy(app => app.ProcessName, StringComparer.OrdinalIgnoreCase)
+            .Select(cluster =>
+            {
+                var windows = cluster.OrderByDescending(window => window.IsActive).ThenBy(window => window.Title).ToList();
+                var group = new TaskbarIconGroup { ProcessName = cluster.Key, Icon = windows[0].Icon, Windows = windows };
+                if (group.IsStacked && _expandedGroupState.TryGetValue(cluster.Key, out var wasExpanded))
+                    group.IsExpanded = wasExpanded;
+                group.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName == nameof(TaskbarIconGroup.IsExpanded))
+                        _expandedGroupState[group.ProcessName] = group.IsExpanded;
+                };
+                return group;
+            })
+            .ToList();
+
+        // Drop stale entries for processes that no longer have multiple windows open.
+        foreach (var staleKey in _expandedGroupState.Keys.Except(groups.Where(g => g.IsStacked).Select(g => g.ProcessName), StringComparer.OrdinalIgnoreCase).ToList())
+            _expandedGroupState.Remove(staleKey);
+
+        return groups;
     }
 
     private int AppPageSize => Math.Max(1, (int)((_settings.BarWidth - 510 - (_pinnedApps.Count * 44)) / 46));
 
     private void PopulateAppPage()
     {
-        var pageCount = Math.Max(1, (int)Math.Ceiling(_allApps.Count / (double)AppPageSize));
+        var pageCount = Math.Max(1, (int)Math.Ceiling(_allGroups.Count / (double)AppPageSize));
         _appPage = Math.Clamp(_appPage, 0, pageCount - 1);
         _apps.Clear();
-        foreach (var app in _allApps.Skip(_appPage * AppPageSize).Take(AppPageSize)) _apps.Add(app);
+        foreach (var group in _allGroups.Skip(_appPage * AppPageSize).Take(AppPageSize)) _apps.Add(group);
         AppPager.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
         AppPageText.Text = $"{_appPage + 1}/{pageCount}";
     }
@@ -525,6 +581,8 @@ public partial class MainWindow : Window
         HideNativeCheck.IsChecked = _settings.HideNativeTaskbar;
         HideInFullscreenCheck.IsChecked = _settings.HideInFullscreenApps;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
+        GroupStackedIconsCheck.IsChecked = _settings.GroupStackedIcons;
+        ShowNotificationBadgesCheck.IsChecked = _settings.ShowNotificationBadges;
         TopOverlayCheck.IsChecked = _settings.TopOverlayEnabled;
         TopClockCheck.IsChecked = _settings.TopShowClock;
         TopPerformanceCheck.IsChecked = _settings.TopShowPerformance;
@@ -638,17 +696,95 @@ public partial class MainWindow : Window
         BackgroundProcessCountText.Text = items.Count == 1 ? "1 active app" : $"{items.Count} active apps";
     }
 
+    /// <summary>
+    /// Shared click handler for both the collapsed group icon (DataContext:
+    /// TaskbarIconGroup) and each individually fanned-out window icon
+    /// (DataContext: AppItem) inside an expanded stack -- see
+    /// RunningApps' DataTemplate in MainWindow.xaml.
+    /// </summary>
     private void RunningApp_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { DataContext: AppItem app }) _windowService.Activate(app);
+        if (sender is not Button button) return;
+
+        if (button.DataContext is TaskbarIconGroup group)
+        {
+            if (group.IsStacked && _settings.GroupStackedIcons)
+            {
+                group.IsExpanded = !group.IsExpanded;
+                return;
+            }
+            _windowService.Activate(group.Primary);
+        }
+        else if (button.DataContext is AppItem selectedWindow)
+        {
+            _windowService.Activate(selectedWindow);
+            var owner = _allGroups.FirstOrDefault(g => g.Windows.Contains(selectedWindow));
+            if (owner is not null) owner.IsExpanded = false;
+        }
+    }
+
+    private void RunningAppGroup_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TaskbarIconGroup group }) group.IsExpanded = false;
+    }
+
+    /// <summary>
+    /// Hover preview for the collapsed group icon -- shows the primary
+    /// (topmost/active) window's live screenshot. For the fanned-out
+    /// per-window icons, see RunningWindow_MouseEnter below.
+    /// </summary>
+    private void RunningAppGroup_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TaskbarIconGroup group } element)
+            ShowIconPreview(element, group.Primary);
+    }
+
+    private void RunningWindow_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: AppItem app } element)
+            ShowIconPreview(element, app);
+    }
+
+    private void RunningIcon_MouseLeave(object sender, MouseEventArgs e) => HideIconPreview();
+
+    private void ShowIconPreview(UIElement placementTarget, AppItem app)
+    {
+        var preview = WindowService.CapturePreview(app.Handle);
+        if (preview is null)
+        {
+            HideIconPreview();
+            return;
+        }
+
+        IconPreviewImage.Source = preview;
+        IconPreviewTitle.Text = app.Title;
+        IconPreviewPopup.PlacementTarget = placementTarget;
+        IconPreviewPopup.IsOpen = true;
+    }
+
+    private void HideIconPreview()
+    {
+        IconPreviewPopup.IsOpen = false;
+        IconPreviewImage.Source = null;
     }
 
     private void CloseRunningApp_Click(object sender, RoutedEventArgs e)
     {
-        if (GetContextItem<AppItem>(sender) is { } app) _windowService.CloseWindow(app);
+        if (GetContextItem<TaskbarIconGroup>(sender) is { } group) _windowService.CloseWindow(group.Primary);
     }
 
     private void PinRunningApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<TaskbarIconGroup>(sender) is not { Primary: { ExecutablePath: { Length: > 0 } path } primary }) return;
+        AddPinnedApp(primary.Title, path);
+    }
+
+    private void CloseFannedWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextItem<AppItem>(sender) is { } app) _windowService.CloseWindow(app);
+    }
+
+    private void PinFannedWindow_Click(object sender, RoutedEventArgs e)
     {
         if (GetContextItem<AppItem>(sender) is not { ExecutablePath: { Length: > 0 } path } app) return;
         AddPinnedApp(app.Title, path);
@@ -1367,6 +1503,23 @@ public partial class MainWindow : Window
         _settings.HideInFullscreenApps = HideInFullscreenCheck.IsChecked == true;
         SaveSettings();
         UpdateFullscreenVisibility();
+    }
+
+    private void GroupStackedIconsCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.GroupStackedIcons = GroupStackedIconsCheck.IsChecked == true;
+        SaveSettings();
+        // Turning this off should immediately un-stack and un-expand everything;
+        // BuildGroups already clears _expandedGroupState when the setting is off.
+        _allGroups = BuildGroups(_allApps);
+        if (!_pageAnimating) PopulateAppPage();
+    }
+
+    private void ShowNotificationBadgesCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.ShowNotificationBadges = ShowNotificationBadgesCheck.IsChecked == true;
+        SaveSettings();
+        if (_settings.ShowNotificationBadges) _notificationBadgeService.RequestAccessAsync();
     }
 
     private void UseWindowsSearchCheck_Changed(object sender, RoutedEventArgs e)

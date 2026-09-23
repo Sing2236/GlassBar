@@ -47,6 +47,14 @@ public partial class App : Application
 
         base.OnStartup(e);
         StartWatchdog();
+        // Start indexing installed apps/Start Menu shortcuts immediately, in
+        // the background, instead of waiting for it to start lazily on the
+        // user's first search. That lazy start is what caused searches to
+        // appear to "not work" for 30s-60s right after launch -- the index
+        // (which enumerates every installed app via COM Shell and resolves
+        // every icon) hadn't even started yet, and the first search had to
+        // wait for the whole thing before showing any results.
+        StartMenuService.WarmUp();
         var safeMode = e.Args.Contains("--safe", StringComparer.OrdinalIgnoreCase);
         var keepVisibleForUiTests = e.Args.Contains("--qa-visible", StringComparer.OrdinalIgnoreCase);
         var window = new MainWindow(safeMode, keepVisibleForUiTests);

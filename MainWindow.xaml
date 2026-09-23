@@ -8,6 +8,7 @@
         AutomationProperties.AutomationId="GlassBarMainWindow"
         FontFamily="{StaticResource UiFont}" Foreground="#F8FAFC">
   <Window.Resources>
+    <controls:PositiveCountToVisibilityConverter x:Key="PositiveCountToVisibility" />
     <SolidColorBrush x:Key="MutedText" Color="#A8B4C6" />
     <SolidColorBrush x:Key="AccentBrush" Color="#7DD3FC" />
     <SolidColorBrush x:Key="GlassBackground" Color="#111722" Opacity="0.82" />
@@ -721,6 +722,16 @@
             <StackPanel><TextBlock Text="Start with Windows" FontWeight="SemiBold" /><TextBlock Text="Launch when you sign in" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
             <CheckBox x:Name="StartWithWindowsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="StartWithWindowsCheck_Click" AutomationProperties.AutomationId="StartWithWindows" />
           </Grid>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Group stacked icons" FontWeight="SemiBold" /><TextBlock Text="Multiple windows of the same app share one icon; click to fan them out" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
+            <CheckBox x:Name="GroupStackedIconsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="GroupStackedIconsCheck_Click" AutomationProperties.AutomationId="GroupStackedIcons" />
+          </Grid>
+          <Grid Margin="0,17,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Notification badges" FontWeight="SemiBold" /><TextBlock Text="Show a count on an icon when it has notifications (requires Windows notification access)" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
+            <CheckBox x:Name="ShowNotificationBadgesCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="ShowNotificationBadgesCheck_Click" AutomationProperties.AutomationId="ShowNotificationBadges" />
+          </Grid>
 
           <DockPanel Margin="0,22,0,0">
             <Button Style="{StaticResource ChoiceButton}" Content="Exit GlassBar" Click="Exit_Click" AutomationProperties.AutomationId="ExitGlassBar" />
@@ -850,32 +861,114 @@
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
+              <!-- Bound to TaskbarIconGroup (one per icon slot). With "Group Stacked
+                   Icons" off, or when an app only has one open window, each group
+                   always wraps exactly one window and looks/behaves identically to
+                   before this existed. With it on and multiple windows sharing a
+                   process, the group renders as a "stack" (layered shadow icons)
+                   that fans out into one button per window on click. -->
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0"
-                          AutomationProperties.Name="{Binding Title}">
-                    <Button.ContextMenu>
-                      <ContextMenu Style="{StaticResource GlassContextMenu}">
-                        <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
-                        <MenuItem Header="Pin to GlassBar" Click="PinRunningApp_Click" />
-                      </ContextMenu>
-                    </Button.ContextMenu>
-                    <Grid Width="24" Height="30">
-                      <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
-                      <Image Source="{Binding Icon}" Width="23" Height="23" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
-                      <Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="#73839B">
-                        <Ellipse.Style>
-                          <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="#73839B" />
-                            <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
-                          </Style>
-                        </Ellipse.Style>
-                      </Ellipse>
-                    </Grid>
-                  </Button>
+                  <Grid Margin="1,0" MouseEnter="RunningAppGroup_MouseEnter" MouseLeave="RunningAppGroup_MouseLeave">
+                    <Button x:Name="CollapsedButton" Style="{StaticResource BarButton}" Click="RunningApp_Click"
+                            ToolTip="{Binding Primary.Title}" AutomationProperties.Name="{Binding Primary.Title}">
+                      <Button.ContextMenu>
+                        <ContextMenu Style="{StaticResource GlassContextMenu}">
+                          <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
+                          <MenuItem Header="Pin to GlassBar" Click="PinRunningApp_Click" />
+                        </ContextMenu>
+                      </Button.ContextMenu>
+                      <Grid Width="26" Height="30">
+                        <Border x:Name="StackShadow2" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
+                                Margin="5,4,0,0" Background="#2A3648" CornerRadius="4" Visibility="Collapsed" />
+                        <Border x:Name="StackShadow1" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
+                                Margin="3,2,0,0" Background="#374357" CornerRadius="4" Visibility="Collapsed" />
+                        <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets"
+                                   Foreground="#8FA2B8" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="18" />
+                        <Image Source="{Binding Primary.Icon}" Width="23" Height="23" HorizontalAlignment="Left" VerticalAlignment="Top"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <Ellipse Width="4" Height="4" HorizontalAlignment="Left" Margin="9,0,0,0" VerticalAlignment="Bottom" Fill="#73839B">
+                          <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                              <Setter Property="Fill" Value="#73839B" />
+                              <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
+                            </Style>
+                          </Ellipse.Style>
+                        </Ellipse>
+                        <Border Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-4,-4,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
+                          <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                      </Grid>
+                    </Button>
+
+                    <!-- Fanned-out state: one small button per window in the group,
+                         separated from the collapsed stack with a scale+fade reveal. -->
+                    <StackPanel x:Name="ExpandedPanel" Orientation="Horizontal" Visibility="Collapsed" Opacity="0" RenderTransformOrigin="0,0.5">
+                      <StackPanel.RenderTransform><ScaleTransform ScaleX="0.6" ScaleY="1" /></StackPanel.RenderTransform>
+                      <ItemsControl ItemsSource="{Binding Windows}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0"
+                                    MouseEnter="RunningWindow_MouseEnter" MouseLeave="RunningIcon_MouseLeave"
+                                    AutomationProperties.Name="{Binding Title}">
+                              <Button.ContextMenu>
+                                <ContextMenu Style="{StaticResource GlassContextMenu}">
+                                  <MenuItem Header="Close window" Click="CloseFannedWindow_Click" />
+                                  <MenuItem Header="Pin to GlassBar" Click="PinFannedWindow_Click" />
+                                </ContextMenu>
+                              </Button.ContextMenu>
+                              <Grid Width="24" Height="30">
+                                <TextBlock Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8"
+                                           HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
+                                <Image Source="{Binding Icon}" Width="23" Height="23" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <Border Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Margin="0,-4,-4,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
+                                  <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="#73839B">
+                                  <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                      <Setter Property="Fill" Value="#73839B" />
+                                      <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
+                                    </Style>
+                                  </Ellipse.Style>
+                                </Ellipse>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Grid>
                   <DataTemplate.Triggers>
-                    <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                    <DataTrigger Binding="{Binding Primary.Icon}" Value="{x:Null}">
                       <Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsStacked}" Value="True">
+                      <Setter TargetName="StackShadow1" Property="Visibility" Value="Visible" />
+                      <Setter TargetName="StackShadow2" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                      <Setter TargetName="CollapsedButton" Property="Visibility" Value="Collapsed" />
+                      <Setter TargetName="ExpandedPanel" Property="Visibility" Value="Visible" />
+                      <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                          <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ExpandedPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.16" />
+                            <DoubleAnimation Storyboard.TargetName="ExpandedPanel"
+                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1" Duration="0:0:0.18">
+                              <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                          </Storyboard>
+                        </BeginStoryboard>
+                      </DataTrigger.EnterActions>
                     </DataTrigger>
                   </DataTemplate.Triggers>
                 </DataTemplate>
@@ -908,5 +1001,18 @@
         <Canvas x:Name="StickerCanvas" Background="Transparent" IsHitTestVisible="False" />
       </Grid>
     </Border>
+
+    <!-- Hover preview for taskbar icons (collapsed groups and individual
+         fanned-out windows). See RunningApps DataTemplate for the
+         MouseEnter/MouseLeave wiring and MainWindow.xaml.cs for
+         ShowIconPreview/HideIconPreview. -->
+    <Popup x:Name="IconPreviewPopup" Placement="Top" AllowsTransparency="True" IsHitTestVisible="False" PopupAnimation="Fade">
+      <Border Background="#1C2534" BorderBrush="#3A4A63" BorderThickness="1" CornerRadius="10" Padding="6" Margin="0,0,0,8">
+        <StackPanel>
+          <Image x:Name="IconPreviewImage" Width="144" Height="224" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+          <TextBlock x:Name="IconPreviewTitle" Foreground="#D7E4F2" FontSize="10" Margin="2,4,2,0" MaxWidth="150" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Popup>
   </Grid>
 </Window>

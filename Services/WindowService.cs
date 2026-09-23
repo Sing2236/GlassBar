@@ -196,6 +196,16 @@ public sealed class WindowService
         catch { return null; }
     }
 
+    /// <summary>
+    /// On-demand single-window screenshot for hover previews (e.g. the
+    /// fanned-out icons in a stacked group). Deliberately not called eagerly
+    /// for every open window on every bar refresh -- PrintWindow/BitBlt
+    /// capture has a real per-call cost, so this is meant to be invoked only
+    /// when a preview is actually about to be shown (mouse-enter), not
+    /// speculatively for windows nobody is looking at.
+    /// </summary>
+    public static ImageSource? CapturePreview(nint window) => CaptureWindowPreview(window);
+
     private static ImageSource? CaptureWindowPreview(nint window)
     {
         if (!NativeMethods.GetWindowRect(window, out var bounds)) return null;

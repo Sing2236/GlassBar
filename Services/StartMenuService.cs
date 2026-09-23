@@ -12,7 +12,22 @@ namespace GlassBar.Services;
 
 public sealed class StartMenuService
 {
-    private Task<IReadOnlyList<LaunchableApp>>? _cacheTask;
+    // Shared across every StartMenuService instance (not just per-instance)
+    // so a proactive warm-up call made anywhere (see App.OnStartup) benefits
+    // whichever instance later services a real search -- this is what makes
+    // WarmUp() actually useful instead of just indexing twice.
+    private static readonly object CacheLock = new();
+    private static Task<IReadOnlyList<LaunchableApp>>? _cacheTask;
+
+    /// <summary>
+    /// Kicks off the (slow: enumerates every installed app via COM Shell,
+    /// resolves every icon, scans Start Menu shortcuts) app index in the
+    /// background immediately, instead of waiting for it to start lazily on
+    /// the user's first search. Call once, as early as possible in app
+    /// startup. Safe to call more than once -- only the first call actually
+    /// starts the work.
+    /// </summary>
+    public static void WarmUp() => new StartMenuService().GetAppsAsync();
 
     public static IReadOnlyList<LaunchableApp> GetSystemApps() =>
     [
@@ -38,7 +53,11 @@ public sealed class StartMenuService
 
     public Task<IReadOnlyList<LaunchableApp>> GetAppsAsync()
     {
-        return _cacheTask ??= Task.Run(LoadApps);
+        if (_cacheTask is not null) return _cacheTask;
+        lock (CacheLock)
+        {
+            return _cacheTask ??= Task.Run(LoadApps);
+        }
     }
 
     public async Task<IReadOnlyList<LaunchableApp>> SearchAppsAsync(
