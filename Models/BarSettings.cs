@@ -5,6 +5,8 @@ public sealed class BarSettings
     public bool HideNativeTaskbar { get; set; } = true;
     public bool HideInFullscreenApps { get; set; } = true;
     public bool StartWithWindows { get; set; }
+    public bool GroupStackedIcons { get; set; }
+    public bool ShowNotificationBadges { get; set; } = true;
     public bool TopOverlayEnabled { get; set; }
     public bool TopShowClock { get; set; } = true;
     public bool TopShowPerformance { get; set; } = true;
