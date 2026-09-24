@@ -42,10 +42,11 @@ public partial class MainWindow : Window
     private AudioVisualizerWindow? _audioVisualizer;
     private IReadOnlyList<AppItem> _allApps = [];
     private List<TaskbarIconGroup> _allGroups = [];
-    // Keyed by ProcessName. Fan-out state has to survive the 1s refresh
-    // timer tick rebuilding groups from scratch, or an expanded stack would
-    // flicker shut about a second after the user opened it.
-    private readonly Dictionary<string, bool> _expandedGroupState = [];
+    // The group currently shown in StackFanPanel, if any. Kept in sync with
+    // fresh AppItem instances each RefreshBar tick (see RefreshBar) so an
+    // open fan-out reflects windows closing/opening live, and closes itself
+    // if its process no longer has multiple windows open.
+    private TaskbarIconGroup? _expandedFanGroup;
     private int _appPage;
     private bool _pageAnimating;
     private StickerConfig? _selectedSticker;
@@ -316,7 +317,9 @@ public partial class MainWindow : Window
         var barThickness = Math.Clamp(_settings.BarHeight, 60, 82) + 8;
         var popupSize = _settingsOpen
             ? Math.Min(650, (IsBarVertical ? screenWidth : screenHeight) - barThickness - 18)
-            : _backgroundProcessesOpen ? 324 : 0;
+            : _backgroundProcessesOpen ? 324
+            : _expandedFanGroup is not null ? StackFanPanelSize(_expandedFanGroup)
+            : 0;
 
         WindowRoot.RowDefinitions.Clear();
         WindowRoot.ColumnDefinitions.Clear();
@@ -362,7 +365,7 @@ public partial class MainWindow : Window
 
     private void PlacePopupPanels(int row, int column, bool horizontal)
     {
-        foreach (var panel in new[] { SettingsPanel, BackgroundProcessesPanel })
+        foreach (var panel in new[] { SettingsPanel, BackgroundProcessesPanel, StackFanPanel })
         {
             Grid.SetRow(panel, row);
             Grid.SetColumn(panel, column);
@@ -373,7 +376,22 @@ public partial class MainWindow : Window
         BackgroundProcessesPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Right : HorizontalAlignment.Center;
         BackgroundProcessesPanel.VerticalAlignment = horizontal ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         BackgroundProcessesPanel.Margin = new Thickness(8);
+        // Center rather than right/bottom-anchored like the other two: it's
+        // not tied to one specific corner button the way Settings/Background
+        // Activity are, so centering along the bar reads more naturally.
+        StackFanPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        StackFanPanel.VerticalAlignment = VerticalAlignment.Center;
+        StackFanPanel.Margin = new Thickness(8);
     }
+
+    /// <summary>
+    /// How much of the popup row/column (see PositionWindow) the fan-out
+    /// flyout needs: for a horizontal bar the windows lay out side-by-side,
+    /// so a fixed height covers it; for a vertical bar they stack downward,
+    /// so height needs to grow with how many windows are in the group.
+    /// </summary>
+    private double StackFanPanelSize(TaskbarIconGroup group) =>
+        IsBarVertical ? Math.Clamp(group.Windows.Count * 38 + 60, 120, 420) : 92;
 
     private void ApplyBarOrientationLayout()
     {
@@ -440,21 +458,18 @@ public partial class MainWindow : Window
                 app.NotificationCount = _notificationBadgeService.GetCount(app);
         _allGroups = BuildGroups(_allApps);
         if (!_pageAnimating) PopulateAppPage();
+        SyncExpandedFanGroup();
     }
 
     /// <summary>
     /// Wraps each open window in its own single-item group (identical to
     /// pre-stacking behavior) unless "Group Stacked Icons" is on, in which
-    /// case windows sharing a process become one group. Preserves each
-    /// still-valid group's fan-out (IsExpanded) state across this rebuild --
-    /// otherwise the 1s refresh timer would collapse an open stack almost
-    /// immediately after the user opened it.
+    /// case windows sharing a process become one group.
     /// </summary>
     private List<TaskbarIconGroup> BuildGroups(IReadOnlyList<AppItem> apps)
     {
         if (!_settings.GroupStackedIcons)
         {
-            _expandedGroupState.Clear();
             return apps.Select(app => new TaskbarIconGroup
             {
                 ProcessName = app.ProcessName,
@@ -463,28 +478,37 @@ public partial class MainWindow : Window
             }).ToList();
         }
 
-        var groups = apps
+        return apps
             .GroupBy(app => app.ProcessName, StringComparer.OrdinalIgnoreCase)
             .Select(cluster =>
             {
                 var windows = cluster.OrderByDescending(window => window.IsActive).ThenBy(window => window.Title).ToList();
-                var group = new TaskbarIconGroup { ProcessName = cluster.Key, Icon = windows[0].Icon, Windows = windows };
-                if (group.IsStacked && _expandedGroupState.TryGetValue(cluster.Key, out var wasExpanded))
-                    group.IsExpanded = wasExpanded;
-                group.PropertyChanged += (_, args) =>
-                {
-                    if (args.PropertyName == nameof(TaskbarIconGroup.IsExpanded))
-                        _expandedGroupState[group.ProcessName] = group.IsExpanded;
-                };
-                return group;
+                return new TaskbarIconGroup { ProcessName = cluster.Key, Icon = windows[0].Icon, Windows = windows };
             })
             .ToList();
+    }
 
-        // Drop stale entries for processes that no longer have multiple windows open.
-        foreach (var staleKey in _expandedGroupState.Keys.Except(groups.Where(g => g.IsStacked).Select(g => g.ProcessName), StringComparer.OrdinalIgnoreCase).ToList())
-            _expandedGroupState.Remove(staleKey);
+    /// <summary>
+    /// Keeps an open StackFanPanel showing live data across the 1s refresh
+    /// timer (which rebuilds _allGroups, and with it every AppItem, from
+    /// scratch each tick): re-points it at the freshly rebuilt group with
+    /// the same process name, or closes it if that process no longer has
+    /// multiple windows open (e.g. the user closed enough of them).
+    /// </summary>
+    private void SyncExpandedFanGroup()
+    {
+        if (_expandedFanGroup is null) return;
 
-        return groups;
+        var refreshed = _allGroups.FirstOrDefault(g =>
+            g.ProcessName.Equals(_expandedFanGroup.ProcessName, StringComparison.OrdinalIgnoreCase) && g.IsStacked);
+        if (refreshed is null)
+        {
+            HideStackFan();
+            return;
+        }
+
+        _expandedFanGroup = refreshed;
+        StackFanItems.ItemsSource = refreshed.Windows;
     }
 
     private int AppPageSize => Math.Max(1, (int)((_settings.BarWidth - 510 - (_pinnedApps.Count * 44)) / 46));
@@ -513,6 +537,7 @@ public partial class MainWindow : Window
         {
             _startMenu?.Hide();
             SetSettingsOpen(false);
+            HideStackFan();
             _topOverlay?.Hide();
             _audioVisualizer?.Hide();
             Hide();
@@ -682,6 +707,7 @@ public partial class MainWindow : Window
 
     private void SetBackgroundProcessesOpen(bool open)
     {
+        if (open) HideStackFan();
         _backgroundProcessesOpen = open;
         BackgroundProcessesPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         if (open) RefreshBackgroundProcesses();
@@ -698,9 +724,8 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Shared click handler for both the collapsed group icon (DataContext:
-    /// TaskbarIconGroup) and each individually fanned-out window icon
-    /// (DataContext: AppItem) inside an expanded stack -- see
-    /// RunningApps' DataTemplate in MainWindow.xaml.
+    /// TaskbarIconGroup, in RunningApps) and each individual window button
+    /// inside the fan-out flyout (DataContext: AppItem, in StackFanItems).
     /// </summary>
     private void RunningApp_Click(object sender, RoutedEventArgs e)
     {
@@ -710,7 +735,8 @@ public partial class MainWindow : Window
         {
             if (group.IsStacked && _settings.GroupStackedIcons)
             {
-                group.IsExpanded = !group.IsExpanded;
+                if (_expandedFanGroup == group) HideStackFan();
+                else ShowStackFan(group);
                 return;
             }
             _windowService.Activate(group.Primary);
@@ -718,14 +744,36 @@ public partial class MainWindow : Window
         else if (button.DataContext is AppItem selectedWindow)
         {
             _windowService.Activate(selectedWindow);
-            var owner = _allGroups.FirstOrDefault(g => g.Windows.Contains(selectedWindow));
-            if (owner is not null) owner.IsExpanded = false;
+            HideStackFan();
         }
     }
 
-    private void RunningAppGroup_MouseLeave(object sender, MouseEventArgs e)
+    /// <summary>
+    /// Opens StackFanPanel with one button per window in the group,
+    /// positioned above/below (horizontal bar) or left/right (vertical bar)
+    /// of the bar -- same flyout mechanism as Settings/Background Activity,
+    /// which already reliably handles "which side has room" and closes on
+    /// click-elsewhere rather than on mouse-leave (see WindowRoot_PreviewMouseLeftButtonDown).
+    /// </summary>
+    private void ShowStackFan(TaskbarIconGroup group)
     {
-        if (sender is FrameworkElement { DataContext: TaskbarIconGroup group }) group.IsExpanded = false;
+        if (_settingsOpen) SetSettingsOpen(false);
+        if (_backgroundProcessesOpen) SetBackgroundProcessesOpen(false);
+
+        _expandedFanGroup = group;
+        StackFanTitle.Text = $"{group.ProcessName} · {group.Windows.Count} windows";
+        SetItemsOrientation(StackFanItems, IsBarVertical ? Orientation.Vertical : Orientation.Horizontal);
+        StackFanItems.ItemsSource = group.Windows;
+        StackFanPanel.Visibility = Visibility.Visible;
+        PositionWindow();
+    }
+
+    private void HideStackFan()
+    {
+        if (_expandedFanGroup is null) return;
+        _expandedFanGroup = null;
+        StackFanPanel.Visibility = Visibility.Collapsed;
+        PositionWindow();
     }
 
     /// <summary>
@@ -758,8 +806,29 @@ public partial class MainWindow : Window
 
         IconPreviewImage.Source = preview;
         IconPreviewTitle.Text = app.Title;
+        IconPreviewPopup.Placement = IconPreviewPlacement();
         IconPreviewPopup.PlacementTarget = placementTarget;
         IconPreviewPopup.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Flips the hover preview to whichever side of the bar has room, so it
+    /// never gets clipped off the top/side of the screen -- e.g. a bar
+    /// docked at the top of the screen shows previews below it instead of
+    /// above.
+    /// </summary>
+    private PlacementMode IconPreviewPlacement()
+    {
+        var screenWidth = SystemParameters.PrimaryScreenWidth;
+        var screenHeight = SystemParameters.PrimaryScreenHeight;
+        if (IsBarVertical)
+        {
+            var barX = _settings.BarX >= 0 ? _settings.BarX : 12;
+            return barX < screenWidth / 2 ? PlacementMode.Right : PlacementMode.Left;
+        }
+
+        var barY = _settings.BarY >= 0 ? _settings.BarY : screenHeight - 90;
+        return barY < screenHeight / 2 ? PlacementMode.Bottom : PlacementMode.Top;
     }
 
     private void HideIconPreview()
@@ -906,6 +975,8 @@ public partial class MainWindow : Window
             SetSettingsOpen(false);
         if (_backgroundProcessesOpen && !IsWithin(source, BackgroundProcessesPanel) && !IsWithin(source, BarSurface))
             SetBackgroundProcessesOpen(false);
+        if (_expandedFanGroup is not null && !IsWithin(source, StackFanPanel) && !IsWithin(source, BarSurface))
+            HideStackFan();
     }
 
     private static bool IsWithin(DependencyObject source, DependencyObject container)
@@ -931,6 +1002,7 @@ public partial class MainWindow : Window
     private void SetSettingsOpen(bool open)
     {
         if (open) _startMenu?.Hide();
+        if (open) HideStackFan();
         if (open && _backgroundProcessesOpen)
         {
             _backgroundProcessesOpen = false;
@@ -1509,8 +1581,7 @@ public partial class MainWindow : Window
     {
         _settings.GroupStackedIcons = GroupStackedIconsCheck.IsChecked == true;
         SaveSettings();
-        // Turning this off should immediately un-stack and un-expand everything;
-        // BuildGroups already clears _expandedGroupState when the setting is off.
+        HideStackFan();
         _allGroups = BuildGroups(_allApps);
         if (!_pageAnimating) PopulateAppPage();
     }
