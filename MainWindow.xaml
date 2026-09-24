@@ -808,6 +808,54 @@
       </Grid>
     </Border>
 
+    <!-- Stacked-icon fan-out: opens as a flyout above/below (horizontal bar)
+         or left/right (vertical bar) of the bar, exactly like Settings and
+         Background Activity above. Reuses that established, working
+         pattern (closes on click-elsewhere, not on mouse-leave) instead of
+         the inline-expand approach this used to have, which reflowed every
+         sibling icon the instant it grew and generated a spurious
+         MouseLeave that closed it again almost immediately. -->
+    <Border x:Name="StackFanPanel" Grid.Row="0" Padding="12,10"
+            Visibility="Collapsed" CornerRadius="16" Background="#F2111722"
+            BorderBrush="#30FFFFFF" BorderThickness="1"
+            AutomationProperties.AutomationId="StackFanPanel">
+      <Border.Effect><DropShadowEffect BlurRadius="26" Opacity="0.46" ShadowDepth="7" Color="#020617" /></Border.Effect>
+      <StackPanel>
+        <TextBlock x:Name="StackFanTitle" Text="Choose a window" FontSize="12" FontWeight="SemiBold" Margin="2,0,2,8" />
+        <ItemsControl x:Name="StackFanItems">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="3"
+                      Height="32" Padding="6,4"
+                      MouseEnter="RunningWindow_MouseEnter" MouseLeave="RunningIcon_MouseLeave"
+                      AutomationProperties.Name="{Binding Title}">
+                <Button.ContextMenu>
+                  <ContextMenu Style="{StaticResource GlassContextMenu}">
+                    <MenuItem Header="Close window" Click="CloseFannedWindow_Click" />
+                    <MenuItem Header="Pin to GlassBar" Click="PinFannedWindow_Click" />
+                  </ContextMenu>
+                </Button.ContextMenu>
+                <Grid Width="140" Height="22">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                  <Image Source="{Binding Icon}" Width="16" Height="16" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                  <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="8,0,4,0" VerticalAlignment="Center" FontSize="11"
+                             TextTrimming="CharacterEllipsis" />
+                  <Border Grid.Column="0" Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="0,-4,-8,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
+                    <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
     <Border x:Name="BarSurface" Grid.Row="1" Margin="4,0,4,4" CornerRadius="22"
             BorderBrush="#30FFFFFF" BorderThickness="1" Background="{DynamicResource GlassBackground}" ClipToBounds="True">
       <Border.Effect><DropShadowEffect x:Name="BarShadow" BlurRadius="28" Opacity="0.48" ShadowDepth="5" Color="#020617" /></Border.Effect>
@@ -865,87 +913,47 @@
                    Icons" off, or when an app only has one open window, each group
                    always wraps exactly one window and looks/behaves identically to
                    before this existed. With it on and multiple windows sharing a
-                   process, the group renders as a "stack" (layered shadow icons)
-                   that fans out into one button per window on click. -->
+                   process, the group renders as a "stack" (layered shadow icons);
+                   clicking it opens StackFanPanel (below) with one button per
+                   window, instead of expanding inline. Inline expansion reflowed
+                   every sibling icon the instant it grew, which was generating a
+                   spurious MouseLeave on the still-stationary cursor and closing
+                   the fan-out immediately after it opened. -->
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid Margin="1,0" MouseEnter="RunningAppGroup_MouseEnter" MouseLeave="RunningAppGroup_MouseLeave">
-                    <Button x:Name="CollapsedButton" Style="{StaticResource BarButton}" Click="RunningApp_Click"
-                            ToolTip="{Binding Primary.Title}" AutomationProperties.Name="{Binding Primary.Title}">
-                      <Button.ContextMenu>
-                        <ContextMenu Style="{StaticResource GlassContextMenu}">
-                          <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
-                          <MenuItem Header="Pin to GlassBar" Click="PinRunningApp_Click" />
-                        </ContextMenu>
-                      </Button.ContextMenu>
-                      <Grid Width="26" Height="30">
-                        <Border x:Name="StackShadow2" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
-                                Margin="5,4,0,0" Background="#2A3648" CornerRadius="4" Visibility="Collapsed" />
-                        <Border x:Name="StackShadow1" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
-                                Margin="3,2,0,0" Background="#374357" CornerRadius="4" Visibility="Collapsed" />
-                        <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets"
-                                   Foreground="#8FA2B8" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="18" />
-                        <Image Source="{Binding Primary.Icon}" Width="23" Height="23" HorizontalAlignment="Left" VerticalAlignment="Top"
-                               RenderOptions.BitmapScalingMode="HighQuality" />
-                        <Ellipse Width="4" Height="4" HorizontalAlignment="Left" Margin="9,0,0,0" VerticalAlignment="Bottom" Fill="#73839B">
-                          <Ellipse.Style>
-                            <Style TargetType="Ellipse">
-                              <Setter Property="Fill" Value="#73839B" />
-                              <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
-                            </Style>
-                          </Ellipse.Style>
-                        </Ellipse>
-                        <Border Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                Margin="0,-4,-4,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
-                          <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                      </Grid>
-                    </Button>
-
-                    <!-- Fanned-out state: one small button per window in the group,
-                         separated from the collapsed stack with a scale+fade reveal. -->
-                    <StackPanel x:Name="ExpandedPanel" Orientation="Horizontal" Visibility="Collapsed" Opacity="0" RenderTransformOrigin="0,0.5">
-                      <StackPanel.RenderTransform><ScaleTransform ScaleX="0.6" ScaleY="1" /></StackPanel.RenderTransform>
-                      <ItemsControl ItemsSource="{Binding Windows}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <Button Style="{StaticResource BarButton}" Click="RunningApp_Click" ToolTip="{Binding Title}" Margin="1,0"
-                                    MouseEnter="RunningWindow_MouseEnter" MouseLeave="RunningIcon_MouseLeave"
-                                    AutomationProperties.Name="{Binding Title}">
-                              <Button.ContextMenu>
-                                <ContextMenu Style="{StaticResource GlassContextMenu}">
-                                  <MenuItem Header="Close window" Click="CloseFannedWindow_Click" />
-                                  <MenuItem Header="Pin to GlassBar" Click="PinFannedWindow_Click" />
-                                </ContextMenu>
-                              </Button.ContextMenu>
-                              <Grid Width="24" Height="30">
-                                <TextBlock Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets" Foreground="#8FA2B8"
-                                           HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="18" />
-                                <Image Source="{Binding Icon}" Width="23" Height="23" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
-                                <Border Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Margin="0,-4,-4,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
-                                  <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
-                                             HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <Ellipse Width="4" Height="4" VerticalAlignment="Bottom" Fill="#73839B">
-                                  <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                      <Setter Property="Fill" Value="#73839B" />
-                                      <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
-                                    </Style>
-                                  </Ellipse.Style>
-                                </Ellipse>
-                              </Grid>
-                            </Button>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </Grid>
+                  <Button x:Name="CollapsedButton" Style="{StaticResource BarButton}" Click="RunningApp_Click" Margin="1,0"
+                          MouseEnter="RunningAppGroup_MouseEnter" MouseLeave="RunningIcon_MouseLeave"
+                          ToolTip="{Binding Primary.Title}" AutomationProperties.Name="{Binding Primary.Title}">
+                    <Button.ContextMenu>
+                      <ContextMenu Style="{StaticResource GlassContextMenu}">
+                        <MenuItem Header="Close window" Click="CloseRunningApp_Click" />
+                        <MenuItem Header="Pin to GlassBar" Click="PinRunningApp_Click" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
+                    <Grid Width="26" Height="30">
+                      <Border x:Name="StackShadow2" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
+                              Margin="5,4,0,0" Background="#2A3648" CornerRadius="4" Visibility="Collapsed" />
+                      <Border x:Name="StackShadow1" Width="23" Height="23" VerticalAlignment="Top" HorizontalAlignment="Left"
+                              Margin="3,2,0,0" Background="#374357" CornerRadius="4" Visibility="Collapsed" />
+                      <TextBlock x:Name="FallbackIcon" Visibility="Collapsed" Text="&#xECAA;" FontFamily="Segoe MDL2 Assets"
+                                 Foreground="#8FA2B8" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="18" />
+                      <Image Source="{Binding Primary.Icon}" Width="23" Height="23" HorizontalAlignment="Left" VerticalAlignment="Top"
+                             RenderOptions.BitmapScalingMode="HighQuality" />
+                      <Ellipse Width="4" Height="4" HorizontalAlignment="Left" Margin="9,0,0,0" VerticalAlignment="Bottom" Fill="#73839B">
+                        <Ellipse.Style>
+                          <Style TargetType="Ellipse">
+                            <Setter Property="Fill" Value="#73839B" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
+                          </Style>
+                        </Ellipse.Style>
+                      </Ellipse>
+                      <Border Background="#E5484D" CornerRadius="7" MinWidth="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
+                              Margin="0,-4,-4,0" Padding="3,0" Visibility="{Binding NotificationCount, Converter={StaticResource PositiveCountToVisibility}}">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="9" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                    </Grid>
+                  </Button>
                   <DataTemplate.Triggers>
                     <DataTrigger Binding="{Binding Primary.Icon}" Value="{x:Null}">
                       <Setter TargetName="FallbackIcon" Property="Visibility" Value="Visible" />
@@ -953,22 +961,6 @@
                     <DataTrigger Binding="{Binding IsStacked}" Value="True">
                       <Setter TargetName="StackShadow1" Property="Visibility" Value="Visible" />
                       <Setter TargetName="StackShadow2" Property="Visibility" Value="Visible" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                      <Setter TargetName="CollapsedButton" Property="Visibility" Value="Collapsed" />
-                      <Setter TargetName="ExpandedPanel" Property="Visibility" Value="Visible" />
-                      <DataTrigger.EnterActions>
-                        <BeginStoryboard>
-                          <Storyboard>
-                            <DoubleAnimation Storyboard.TargetName="ExpandedPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.16" />
-                            <DoubleAnimation Storyboard.TargetName="ExpandedPanel"
-                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                             To="1" Duration="0:0:0.18">
-                              <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
-                            </DoubleAnimation>
-                          </Storyboard>
-                        </BeginStoryboard>
-                      </DataTrigger.EnterActions>
                     </DataTrigger>
                   </DataTemplate.Triggers>
                 </DataTemplate>
@@ -1006,11 +998,11 @@
          fanned-out windows). See RunningApps DataTemplate for the
          MouseEnter/MouseLeave wiring and MainWindow.xaml.cs for
          ShowIconPreview/HideIconPreview. -->
-    <Popup x:Name="IconPreviewPopup" Placement="Top" AllowsTransparency="True" IsHitTestVisible="False" PopupAnimation="Fade">
-      <Border Background="#1C2534" BorderBrush="#3A4A63" BorderThickness="1" CornerRadius="10" Padding="6" Margin="0,0,0,8">
+    <Popup x:Name="IconPreviewPopup" AllowsTransparency="True" IsHitTestVisible="False" PopupAnimation="Fade">
+      <Border Background="#1C2534" BorderBrush="#3A4A63" BorderThickness="1" CornerRadius="8" Padding="5" Margin="6">
         <StackPanel>
-          <Image x:Name="IconPreviewImage" Width="144" Height="224" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
-          <TextBlock x:Name="IconPreviewTitle" Foreground="#D7E4F2" FontSize="10" Margin="2,4,2,0" MaxWidth="150" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
+          <Image x:Name="IconPreviewImage" Width="110" Height="70" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+          <TextBlock x:Name="IconPreviewTitle" Foreground="#D7E4F2" FontSize="9" Margin="2,3,2,0" MaxWidth="120" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
         </StackPanel>
       </Border>
     </Popup>
