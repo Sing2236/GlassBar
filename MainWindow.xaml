@@ -75,6 +75,23 @@
       </Setter>
     </Style>
 
+    <!-- Left-rail category item in the settings panel. Same pill language as
+         ChoiceButton, stretched to fill the rail; Tag="Selected" marks the
+         active category. -->
+    <Style x:Key="SettingsNavButton" TargetType="Button" BasedOn="{StaticResource ChoiceButton}">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="Padding" Value="12,10" />
+      <Style.Triggers>
+        <Trigger Property="Tag" Value="Selected">
+          <Setter Property="Background" Value="#257DD3FC" />
+          <Setter Property="BorderBrush" Value="#5A7DD3FC" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
     <Style x:Key="AccentSwatch" TargetType="Button">
       <Setter Property="Width" Value="30" /><Setter Property="Height" Value="30" />
       <Setter Property="Margin" Value="0,0,9,0" /><Setter Property="BorderThickness" Value="0" />
@@ -255,490 +272,548 @@
       <RowDefinition x:Name="BarRow" Height="68" />
     </Grid.RowDefinitions>
 
-    <Border x:Name="SettingsPanel" Grid.Row="0" Width="470" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+    <Border x:Name="SettingsPanel" Grid.Row="0" Width="620" HorizontalAlignment="Right" VerticalAlignment="Stretch"
             Margin="0,8,8,12" Padding="22" Visibility="Collapsed" CornerRadius="22"
             Background="#ED111722" BorderBrush="#28FFFFFF" BorderThickness="1"
             AutomationProperties.AutomationId="SettingsPanel">
       <Border.Effect><DropShadowEffect BlurRadius="28" Opacity="0.42" ShadowDepth="8" Color="#000000" /></Border.Effect>
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,0">
-        <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource GlassScrollBar}" /></ScrollViewer.Resources>
-        <StackPanel>
-          <DockPanel>
-            <StackPanel>
-              <TextBlock Text="Customize GlassBar" FontSize="20" FontWeight="SemiBold" />
-              <TextBlock Text="Changes are saved as you make them." Foreground="{StaticResource MutedText}" Margin="0,3,0,0" />
-            </StackPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource TinyButton}" Width="30" MinWidth="30" Height="30" Padding="0"
-                    FontSize="11" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
-                    Click="CloseSettings_Click" ToolTip="Close settings" AutomationProperties.AutomationId="CloseSettings" />
-          </DockPanel>
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-          <StackPanel Margin="0,22,0,0">
-            <TextBlock Text="AMBIENT EFFECT" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-            <WrapPanel Margin="0,9,0,0">
-              <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" Click="Effect_Click" AutomationProperties.AutomationId="EffectRain" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Aurora" Tag="Aurora" Click="Effect_Click" AutomationProperties.AutomationId="EffectAurora" />
-              <Button x:Name="EffectSnowButton" Style="{StaticResource ChoiceButton}" Content="Snow  PRO" Tag="Snow" Click="Effect_Click" AutomationProperties.AutomationId="EffectSnow" />
-              <Button x:Name="EffectFirefliesButton" Style="{StaticResource ChoiceButton}" Content="Fireflies  PRO" Tag="Fireflies" Click="Effect_Click" AutomationProperties.AutomationId="EffectFireflies" />
-              <Button x:Name="EffectPulseButton" Style="{StaticResource ChoiceButton}" Content="Pulse  PRO" Tag="Pulse" Click="Effect_Click" AutomationProperties.AutomationId="EffectPulse" />
-              <Button x:Name="EffectCustomButton" Style="{StaticResource ChoiceButton}" Content="Custom  PRO" Tag="Custom" Click="Effect_Click" AutomationProperties.AutomationId="EffectCustom" />
-              <Button Style="{StaticResource ChoiceButton}" Content="Off" Tag="Off" Click="Effect_Click" AutomationProperties.AutomationId="EffectOff" />
-            </WrapPanel>
+        <DockPanel Grid.Row="0">
+          <StackPanel>
+            <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="Changes are saved as you make them." Foreground="{StaticResource MutedText}" Margin="0,3,0,0" />
+          </StackPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource TinyButton}" Width="30" MinWidth="30" Height="30" Padding="0"
+                  FontSize="11" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                  Click="CloseSettings_Click" ToolTip="Close settings" AutomationProperties.AutomationId="CloseSettings" />
+        </DockPanel>
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="168" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Grid.Column="0">
+            <Button x:Name="SettingsNavLook" Style="{StaticResource SettingsNavButton}" Content="Look" Tag="Selected"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavLook" />
+            <Button x:Name="SettingsNavEffects" Style="{StaticResource SettingsNavButton}" Content="Effects"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavEffects" />
+            <Button x:Name="SettingsNavAudio" Style="{StaticResource SettingsNavButton}" Content="Audio"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavAudio" />
+            <Button x:Name="SettingsNavOverlay" Style="{StaticResource SettingsNavButton}" Content="Overlay"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavOverlay" />
+            <Button x:Name="SettingsNavAltTab" Style="{StaticResource SettingsNavButton}" Content="Alt-Tab"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavAltTab" />
+            <Button x:Name="SettingsNavPro" Style="{StaticResource SettingsNavButton}" Content="Pro"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavPro" />
           </StackPanel>
 
-          <Border x:Name="ProPanel" Margin="0,12,0,0" Padding="14" CornerRadius="14"
-                  Background="#121EC8F0" BorderBrush="#3A7DD3FC" BorderThickness="1"
-                  AutomationProperties.AutomationId="ProPanel">
-            <StackPanel>
-              <DockPanel LastChildFill="True">
-                <Border DockPanel.Dock="Right" Padding="9,4" CornerRadius="9" Background="#257DD3FC" Margin="12,0,0,0">
-                  <TextBlock x:Name="ProStatusText" Text="LOCKED" FontSize="10" FontWeight="SemiBold"
-                             Foreground="#BEEBFF" AutomationProperties.AutomationId="ProStatus" />
+          <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,0">
+            <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource GlassScrollBar}" /></ScrollViewer.Resources>
+            <Grid Margin="6,0,0,0">
+              <StackPanel x:Name="SettingsPageLook">
+                <StackPanel Margin="0,0,0,0">
+                  <TextBlock Text="AMBIENT EFFECT" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                  <WrapPanel Margin="0,9,0,0">
+                    <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" Click="Effect_Click" AutomationProperties.AutomationId="EffectRain" />
+                    <Button Style="{StaticResource ChoiceButton}" Content="Aurora" Tag="Aurora" Click="Effect_Click" AutomationProperties.AutomationId="EffectAurora" />
+                    <Button x:Name="EffectSnowButton" Style="{StaticResource ChoiceButton}" Content="Snow  PRO" Tag="Snow" Click="Effect_Click" AutomationProperties.AutomationId="EffectSnow" />
+                    <Button x:Name="EffectFirefliesButton" Style="{StaticResource ChoiceButton}" Content="Fireflies  PRO" Tag="Fireflies" Click="Effect_Click" AutomationProperties.AutomationId="EffectFireflies" />
+                    <Button x:Name="EffectPulseButton" Style="{StaticResource ChoiceButton}" Content="Pulse  PRO" Tag="Pulse" Click="Effect_Click" AutomationProperties.AutomationId="EffectPulse" />
+                    <Button x:Name="EffectCustomButton" Style="{StaticResource ChoiceButton}" Content="Custom  PRO" Tag="Custom" Click="Effect_Click" AutomationProperties.AutomationId="EffectCustom" />
+                    <Button Style="{StaticResource ChoiceButton}" Content="Off" Tag="Off" Click="Effect_Click" AutomationProperties.AutomationId="EffectOff" />
+                  </WrapPanel>
+                </StackPanel>
+
+                <StackPanel Margin="0,18,0,0">
+                  <TextBlock Text="ACCENT COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                  <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                    <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" Click="Accent_Click" ToolTip="Sky" />
+                    <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" Click="Accent_Click" ToolTip="Violet" />
+                    <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" Click="Accent_Click" ToolTip="Mint" />
+                    <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" Click="Accent_Click" ToolTip="Rose" />
+                    <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" Click="Accent_Click" ToolTip="Amber" />
+                  </StackPanel>
+                </StackPanel>
+
+                <Grid Margin="0,18,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Bar background" FontWeight="SemiBold" /><TextBlock Text="Keep effects on transparent glass" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="BackgroundVisibleCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                            Click="BackgroundVisibleCheck_Click" AutomationProperties.AutomationId="BackgroundVisible" />
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Glass opacity" FontWeight="SemiBold" /><TextBlock Text="Background transparency" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <Slider x:Name="OpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.30" Maximum="0.98" VerticalAlignment="Center" ValueChanged="OpacitySlider_ValueChanged" AutomationProperties.AutomationId="OpacitySlider" />
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Effect intensity" FontWeight="SemiBold" /><TextBlock Text="Animation strength" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <Slider x:Name="IntensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" VerticalAlignment="Center" ValueChanged="IntensitySlider_ValueChanged" AutomationProperties.AutomationId="IntensitySlider" />
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Bar width" FontWeight="SemiBold" /><TextBlock x:Name="WidthValueText" Text="980 px" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <Slider x:Name="WidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="720" Maximum="1600" TickFrequency="20" VerticalAlignment="Center" ValueChanged="WidthSlider_ValueChanged" AutomationProperties.AutomationId="WidthSlider" />
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Bar direction" FontWeight="SemiBold" /><TextBlock Text="Reflows and stays draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarHorizontal" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarVertical" /></WrapPanel>
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Bar height" FontWeight="SemiBold" /><TextBlock Text="Compact or roomy" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <Slider x:Name="HeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="60" Maximum="82" TickFrequency="2" VerticalAlignment="Center" ValueChanged="HeightSlider_ValueChanged" AutomationProperties.AutomationId="HeightSlider" />
+                </Grid>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Corner radius" FontWeight="SemiBold" /><TextBlock Text="Square to pill shaped" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <Slider x:Name="CornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="10" Maximum="32" TickFrequency="2" VerticalAlignment="Center" ValueChanged="CornerSlider_ValueChanged" AutomationProperties.AutomationId="CornerSlider" />
+                </Grid>
+
+                <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+                  <StackPanel>
+                    <TextBlock Text="PINNED APPS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <TextBlock Text="Pin an executable here, or right-click an open app icon" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="11" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Pin app" Click="AddPinnedApp_Click" AutomationProperties.AutomationId="AddPinnedApp" /><Button Style="{StaticResource ChoiceButton}" Content="Clear pins" Click="ClearPinnedApps_Click" /></StackPanel>
+                  </StackPanel>
                 </Border>
-                <StackPanel>
-                  <TextBlock Text="GlassBar Pro" FontWeight="SemiBold" />
-                  <TextBlock Text="$5 once · lifetime effects unlock" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" />
-                </StackPanel>
-              </DockPanel>
 
-              <TextBlock Text="Unlock Snow, Fireflies, Pulse, and the Custom Effect Lab. We verify the PayPal payment, then email a signed lifetime key to the payment email."
-                         TextWrapping="Wrap" Foreground="#C9D6E5" FontSize="11" Margin="0,11,0,0" />
+                <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+                  <StackPanel>
+                    <StackPanel>
+                      <TextBlock Text="GIF stickers" FontWeight="SemiBold" />
+                      <TextBlock Text="Add one, then drag it anywhere on the bar" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddSticker_Click" AutomationProperties.AutomationId="AddSticker" />
+                        <Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearStickers_Click" AutomationProperties.AutomationId="ClearStickers" />
+                      </StackPanel>
+                    </StackPanel>
+                    <ListBox x:Name="StickerPicker" Margin="0,13,0,0" Background="Transparent" BorderThickness="0"
+                             ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="StickerPicker_SelectionChanged"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="StickerPicker">
+                      <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ListBox.ItemsPanel>
+                      <ListBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" />
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Grid Margin="0,13,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="StickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="24" Maximum="110" ValueChanged="StickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="StickerSizeSlider" />
+                    </Grid>
+                    <Grid Margin="0,7,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="StickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="StickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="StickerOpacitySlider" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
 
-              <StackPanel x:Name="ProEntryPanel" Margin="0,12,0,0">
-                <Button x:Name="BuyProButton" Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left"
-                        Content="Buy Pro · $5 with PayPal" Click="BuyPro_Click" AutomationProperties.AutomationId="BuyPro" />
-                <TextBox x:Name="LicenseKeyBox" Style="{StaticResource GlassTextBox}" Height="68" Margin="0,4,0,0"
-                         TextWrapping="Wrap" VerticalContentAlignment="Top" MaxLength="2048"
-                         AutomationProperties.Name="GlassBar Pro license key" AutomationProperties.AutomationId="LicenseKey" />
-                <Button Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left" Margin="0,9,0,0"
-                        Content="Activate license" Click="ActivateLicense_Click" AutomationProperties.AutomationId="ActivateLicense" />
+                <Border Margin="0,17,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
+                        AutomationProperties.AutomationId="StartMenuAppearanceOptions">
+                  <StackPanel>
+                    <TextBlock Text="WINDOWS MENU" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <TextBlock Text="Shape the launcher without changing the rest of GlassBar" Margin="0,4,0,0"
+                               Foreground="{StaticResource MutedText}" FontSize="10" TextWrapping="Wrap" />
+
+                    <Grid Margin="0,12,8,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <TextBlock Text="Ambient effect" FontSize="11" />
+                        <TextBlock Text="Use the current bar animation" Foreground="{StaticResource MutedText}" FontSize="10" />
+                      </StackPanel>
+                      <CheckBox x:Name="StartMenuEffectsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                                Click="StartMenuEffectsCheck_Click" AutomationProperties.AutomationId="StartMenuEffectsEnabled" />
+                    </Grid>
+
+                    <TextBlock Text="LAYOUT DENSITY" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,7,0,0">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="StartMenuDensity_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Comfortable" Tag="Comfortable" Click="StartMenuDensity_Click" />
+                    </WrapPanel>
+
+                    <TextBlock Text="SURFACE" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Midnight" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#1A2431" Tag="#1A2431" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Slate" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#080B10" Tag="#080B10" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Black" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#16251F" Tag="#16251F" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Forest" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#271B20" Tag="#271B20" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Garnet" />
+                    </StackPanel>
+
+                    <TextBlock Text="HIGHLIGHT" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Sky" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Violet" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Mint" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Rose" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Amber" />
+                    </StackPanel>
+
+                    <Grid Margin="0,11,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <StackPanel><TextBlock Text="Surface opacity" FontSize="11" /><TextBlock x:Name="StartMenuOpacityValueText" Text="94%" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                      <Slider x:Name="StartMenuOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.55" Maximum="0.99"
+                              ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuOpacity" />
+                    </Grid>
+                    <Grid Margin="0,7,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <StackPanel><TextBlock Text="Corner shape" FontSize="11" /><TextBlock x:Name="StartMenuCornerValueText" Text="18 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                      <Slider x:Name="StartMenuCornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="8" Maximum="26" TickFrequency="2"
+                              ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuCornerRadius" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Use Windows search" FontWeight="SemiBold" /><TextBlock Text="Magnifier opens the original Windows Search" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="UseWindowsSearchCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                            Checked="UseWindowsSearchCheck_Changed" Unchecked="UseWindowsSearchCheck_Changed" AutomationProperties.AutomationId="UseWindowsSearch" />
+                </Grid>
+
+                <Border Margin="0,13,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
+                  <StackPanel>
+                    <TextBlock Text="QUICK SEARCH" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <TextBlock Text="Click a shortcut, then press the new key combination." Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
+                    <Grid Margin="0,9,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Open applications" VerticalAlignment="Center" FontSize="11" />
+                      <TextBox x:Name="SearchAppsHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                               Tag="Apps" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchAppsHotkey" />
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Search the web" VerticalAlignment="Center" FontSize="11" />
+                      <TextBox x:Name="SearchWebHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                               Tag="Web" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchWebHotkey" />
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Search everything" VerticalAlignment="Center" FontSize="11" />
+                      <TextBox x:Name="SearchCombinedHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
+                               Tag="Combined" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchCombinedHotkey" />
+                    </Grid>
+                    <TextBlock x:Name="SearchHotkeyStatus" Margin="0,7,0,0" FontSize="10" Foreground="{StaticResource MutedText}" TextWrapping="Wrap" />
+                    <TextBlock Text="Disabled automatically while a fullscreen game is active" Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
+                    <Grid Margin="0,12,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <StackPanel><TextBlock Text="Palette width" FontSize="11" /><TextBlock x:Name="SearchPaletteWidthValueText" Text="620 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                      <Slider x:Name="SearchPaletteWidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="480" Maximum="900" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteWidth" />
+                    </Grid>
+                    <Grid Margin="0,8,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <StackPanel><TextBlock Text="Palette height" FontSize="11" /><TextBlock x:Name="SearchPaletteHeightValueText" Text="472 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
+                      <Slider x:Name="SearchPaletteHeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="300" Maximum="720" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteHeight" />
+                    </Grid>
+                    <TextBlock Text="BACKGROUND" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Midnight" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#243142" Tag="#243142" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Slate" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#05070A" Tag="#05070A" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Black" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#241D3B" Tag="#241D3B" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Violet" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Light" />
+                    </StackPanel>
+                    <TextBlock Text="TEXT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="White" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#BEEBFF" Tag="#BEEBFF" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Sky" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#CFFFE5" Tag="#CFFFE5" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Mint" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#0B0F14" Tag="#0B0F14" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Black" />
+                    </StackPanel>
+                    <TextBlock Text="HIGHLIGHT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Sky" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Violet" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Mint" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Rose" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Amber" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="HideNativeCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideNativeCheck_Click" AutomationProperties.AutomationId="HideNativeTaskbar" />
+                </Grid>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Hide in fullscreen games" FontWeight="SemiBold" /><TextBlock Text="Browser videos and media players keep GlassBar visible" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="HideInFullscreenCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideInFullscreenCheck_Click" AutomationProperties.AutomationId="HideInFullscreenApps" />
+                </Grid>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Start with Windows" FontWeight="SemiBold" /><TextBlock Text="Launch when you sign in" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="StartWithWindowsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="StartWithWindowsCheck_Click" AutomationProperties.AutomationId="StartWithWindows" />
+                </Grid>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Group stacked icons" FontWeight="SemiBold" /><TextBlock Text="Multiple windows of the same app share one icon; click to fan them out" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
+                  <CheckBox x:Name="GroupStackedIconsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="GroupStackedIconsCheck_Click" AutomationProperties.AutomationId="GroupStackedIcons" />
+                </Grid>
+
+                <Grid Margin="0,17,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Notification badges" FontWeight="SemiBold" /><TextBlock Text="Show a count on an icon when it has notifications (requires Windows notification access)" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
+                  <CheckBox x:Name="ShowNotificationBadgesCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="ShowNotificationBadgesCheck_Click" AutomationProperties.AutomationId="ShowNotificationBadges" />
+                </Grid>
+
+                <DockPanel Margin="0,22,0,0">
+                  <Button Style="{StaticResource ChoiceButton}" Content="Exit GlassBar" Click="Exit_Click" AutomationProperties.AutomationId="ExitGlassBar" />
+                  <TextBlock DockPanel.Dock="Right" Text="Ctrl + Alt + Shift + T" VerticalAlignment="Center" FontSize="10" Foreground="{StaticResource MutedText}" />
+                </DockPanel>
               </StackPanel>
 
-              <TextBlock x:Name="LicenseMessageText" Text="Rain and Aurora are free."
-                         TextWrapping="Wrap" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,7,0,0"
-                         AutomationProperties.AutomationId="LicenseMessage" />
-            </StackPanel>
-          </Border>
+              <StackPanel x:Name="SettingsPageEffects" Visibility="Collapsed">
+                <Border x:Name="CustomEffectPanel" Margin="0,0,0,0" Padding="14" CornerRadius="14" Visibility="Collapsed"
+                        Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
+                        AutomationProperties.AutomationId="CustomEffectPanel">
+                  <StackPanel>
+                    <DockPanel LastChildFill="True">
+                      <Button DockPanel.Dock="Right" Style="{StaticResource ChoiceButton}" Margin="12,0,0,8"
+                              Content="Randomize" Click="RandomizeEffect_Click" AutomationProperties.AutomationId="RandomizeEffect" />
+                      <StackPanel>
+                        <TextBlock Text="Custom effect lab" FontWeight="SemiBold" />
+                        <TextBlock x:Name="CustomEffectSummary" Text="Orb · Float" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      </StackPanel>
+                    </DockPanel>
 
-          <Border x:Name="CustomEffectPanel" Margin="0,14,0,0" Padding="14" CornerRadius="14" Visibility="Collapsed"
-                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
-                  AutomationProperties.AutomationId="CustomEffectPanel">
-            <StackPanel>
-              <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Right" Style="{StaticResource ChoiceButton}" Margin="12,0,0,8"
-                        Content="Randomize" Click="RandomizeEffect_Click" AutomationProperties.AutomationId="RandomizeEffect" />
-                <StackPanel>
-                  <TextBlock Text="Custom effect lab" FontWeight="SemiBold" />
-                  <TextBlock x:Name="CustomEffectSummary" Text="Orb · Float" Foreground="{StaticResource MutedText}" FontSize="11" />
-                </StackPanel>
-              </DockPanel>
+                    <TextBox x:Name="CustomEffectNameBox" Style="{StaticResource GlassTextBox}" Margin="0,12,0,0" MaxLength="40"
+                             TextChanged="CustomEffectNameBox_TextChanged" AutomationProperties.AutomationId="CustomEffectName" />
 
-              <TextBox x:Name="CustomEffectNameBox" Style="{StaticResource GlassTextBox}" Margin="0,12,0,0" MaxLength="40"
-                       TextChanged="CustomEffectNameBox_TextChanged" AutomationProperties.AutomationId="CustomEffectName" />
+                    <TextBlock Text="PARTICLE SHAPE" Margin="0,13,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,7,0,0">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Orb" Tag="Orb" Click="CustomShape_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Spark" Tag="Spark" Click="CustomShape_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Drop" Tag="Drop" Click="CustomShape_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Diamond" Tag="Diamond" Click="CustomShape_Click" />
+                    </WrapPanel>
 
-              <TextBlock Text="PARTICLE SHAPE" Margin="0,13,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,7,0,0">
-                <Button Style="{StaticResource ChoiceButton}" Content="Orb" Tag="Orb" Click="CustomShape_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Spark" Tag="Spark" Click="CustomShape_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Drop" Tag="Drop" Click="CustomShape_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Diamond" Tag="Diamond" Click="CustomShape_Click" />
-              </WrapPanel>
+                    <TextBlock Text="MOTION" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,7,0,0">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Float" Tag="Float" Click="CustomMotion_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Fall" Tag="Fall" Click="CustomMotion_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Rise" Tag="Rise" Click="CustomMotion_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Drift" Tag="Drift" Click="CustomMotion_Click" />
+                    </WrapPanel>
 
-              <TextBlock Text="MOTION" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,7,0,0">
-                <Button Style="{StaticResource ChoiceButton}" Content="Float" Tag="Float" Click="CustomMotion_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Fall" Tag="Fall" Click="CustomMotion_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Rise" Tag="Rise" Click="CustomMotion_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Drift" Tag="Drift" Click="CustomMotion_Click" />
-              </WrapPanel>
+                    <TextBlock Text="SECONDARY COLOR" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" Click="CustomColor_Click" ToolTip="Violet" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" Click="CustomColor_Click" ToolTip="Mint" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" Click="CustomColor_Click" ToolTip="Rose" />
+                      <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" Click="CustomColor_Click" ToolTip="Amber" />
+                    </StackPanel>
 
-              <TextBlock Text="SECONDARY COLOR" Margin="0,8,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" Click="CustomColor_Click" ToolTip="Violet" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" Click="CustomColor_Click" ToolTip="Mint" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" Click="CustomColor_Click" ToolTip="Rose" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" Click="CustomColor_Click" ToolTip="Amber" />
+                    <Grid Margin="0,11,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Density" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="CustomDensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1" ValueChanged="CustomDensitySlider_ValueChanged" AutomationProperties.AutomationId="CustomDensity" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Speed" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="CustomSpeedSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSpeedSlider_ValueChanged" AutomationProperties.AutomationId="CustomSpeed" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Particle size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="CustomSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSizeSlider_ValueChanged" AutomationProperties.AutomationId="CustomParticleSize" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Glow" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="CustomGlowSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomGlowSlider_ValueChanged" AutomationProperties.AutomationId="CustomGlow" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Trail" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="CustomTrailSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomTrailSlider_ValueChanged" AutomationProperties.AutomationId="CustomTrail" />
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,11,0,0">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Import JSON" Click="ImportEffect_Click" AutomationProperties.AutomationId="ImportEffect" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Export JSON" Click="ExportEffect_Click" AutomationProperties.AutomationId="ExportEffect" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
               </StackPanel>
 
-              <Grid Margin="0,11,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Density" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="CustomDensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1" ValueChanged="CustomDensitySlider_ValueChanged" AutomationProperties.AutomationId="CustomDensity" />
-              </Grid>
-              <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Speed" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="CustomSpeedSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSpeedSlider_ValueChanged" AutomationProperties.AutomationId="CustomSpeed" />
-              </Grid>
-              <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Particle size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="CustomSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.1" Maximum="1" ValueChanged="CustomSizeSlider_ValueChanged" AutomationProperties.AutomationId="CustomParticleSize" />
-              </Grid>
-              <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Glow" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="CustomGlowSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomGlowSlider_ValueChanged" AutomationProperties.AutomationId="CustomGlow" />
-              </Grid>
-              <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Trail" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="CustomTrailSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="CustomTrailSlider_ValueChanged" AutomationProperties.AutomationId="CustomTrail" />
-              </Grid>
+              <StackPanel x:Name="SettingsPageAudio" Visibility="Collapsed">
+                <Grid Margin="0,0,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Audio visualizer  ·  PRO" FontWeight="SemiBold" /><TextBlock Text="Transparent, reactive and draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="AudioVisualizerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="AudioVisualizerCheck_Click" AutomationProperties.AutomationId="AudioVisualizerEnabled" />
+                </Grid>
 
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,11,0,0">
-                <Button Style="{StaticResource ChoiceButton}" Content="Import JSON" Click="ImportEffect_Click" AutomationProperties.AutomationId="ImportEffect" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Export JSON" Click="ExportEffect_Click" AutomationProperties.AutomationId="ExportEffect" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-
-          <StackPanel Margin="0,18,0,0">
-            <TextBlock Text="ACCENT COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-            <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
-              <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" Click="Accent_Click" ToolTip="Sky" />
-              <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" Click="Accent_Click" ToolTip="Violet" />
-              <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" Click="Accent_Click" ToolTip="Mint" />
-              <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" Click="Accent_Click" ToolTip="Rose" />
-              <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" Click="Accent_Click" ToolTip="Amber" />
-            </StackPanel>
-          </StackPanel>
-
-          <Grid Margin="0,18,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Bar background" FontWeight="SemiBold" /><TextBlock Text="Keep effects on transparent glass" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="BackgroundVisibleCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
-                      Click="BackgroundVisibleCheck_Click" AutomationProperties.AutomationId="BackgroundVisible" />
-          </Grid>
-
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Glass opacity" FontWeight="SemiBold" /><TextBlock Text="Background transparency" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <Slider x:Name="OpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.30" Maximum="0.98" VerticalAlignment="Center" ValueChanged="OpacitySlider_ValueChanged" AutomationProperties.AutomationId="OpacitySlider" />
-          </Grid>
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Effect intensity" FontWeight="SemiBold" /><TextBlock Text="Animation strength" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <Slider x:Name="IntensitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" VerticalAlignment="Center" ValueChanged="IntensitySlider_ValueChanged" AutomationProperties.AutomationId="IntensitySlider" />
-          </Grid>
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Bar width" FontWeight="SemiBold" /><TextBlock x:Name="WidthValueText" Text="980 px" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <Slider x:Name="WidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="720" Maximum="1600" TickFrequency="20" VerticalAlignment="Center" ValueChanged="WidthSlider_ValueChanged" AutomationProperties.AutomationId="WidthSlider" />
-          </Grid>
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Bar direction" FontWeight="SemiBold" /><TextBlock Text="Reflows and stays draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarHorizontal" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="BarOrientation_Click" AutomationProperties.AutomationId="BarVertical" /></WrapPanel>
-          </Grid>
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Bar height" FontWeight="SemiBold" /><TextBlock Text="Compact or roomy" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <Slider x:Name="HeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="60" Maximum="82" TickFrequency="2" VerticalAlignment="Center" ValueChanged="HeightSlider_ValueChanged" AutomationProperties.AutomationId="HeightSlider" />
-          </Grid>
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Corner radius" FontWeight="SemiBold" /><TextBlock Text="Square to pill shaped" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <Slider x:Name="CornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="10" Maximum="32" TickFrequency="2" VerticalAlignment="Center" ValueChanged="CornerSlider_ValueChanged" AutomationProperties.AutomationId="CornerSlider" />
-          </Grid>
-
-          <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
-            <StackPanel>
-              <TextBlock Text="PINNED APPS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <TextBlock Text="Pin an executable here, or right-click an open app icon" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="11" />
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Pin app" Click="AddPinnedApp_Click" AutomationProperties.AutomationId="AddPinnedApp" /><Button Style="{StaticResource ChoiceButton}" Content="Clear pins" Click="ClearPinnedApps_Click" /></StackPanel>
-            </StackPanel>
-          </Border>
-
-          <Grid Margin="0,18,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Audio visualizer  ·  PRO" FontWeight="SemiBold" /><TextBlock Text="Transparent, reactive and draggable" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="AudioVisualizerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="AudioVisualizerCheck_Click" AutomationProperties.AutomationId="AudioVisualizerEnabled" />
-          </Grid>
-          <Border x:Name="AudioVisualizerOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
-                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
-            <StackPanel>
-              <TextBlock Text="VISUAL STYLE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,5">
-                <Button Style="{StaticResource ChoiceButton}" Content="Spectrum" Tag="Spectrum" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Mirror" Tag="Mirror" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Wave" Tag="Wave" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Pulse" Tag="Pulse" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
-              </WrapPanel>
-              <TextBlock Text="COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,5">
-                <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Ocean" Tag="Ocean" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Sunset" Tag="Sunset" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Neon" Tag="Neon" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Mono" Tag="Mono" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
-              </WrapPanel>
-              <TextBlock Text="BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,5">
-                <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Tint" Tag="Tint" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="Transparent" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
-              </WrapPanel>
-              <TextBlock Text="BORDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,5">
-                <Button Style="{StaticResource ChoiceButton}" Content="Subtle" Tag="Subtle" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="None" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
-              </WrapPanel>
-              <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Sensitivity" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSensitivitySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.5" Maximum="2" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Smoothing" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSmoothingSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.65" Maximum="0.96" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Glow" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioGlowSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0" Maximum="1" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Detail" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioBarCountSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="12" Maximum="64" TickFrequency="2" IsSnapToTickEnabled="True" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Width" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioWidthSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="260" Maximum="720" TickFrequency="10" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Height" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioHeightSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="96" Maximum="300" TickFrequency="4" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
-            </StackPanel>
-          </Border>
-
-          <Border Margin="0,20,0,0" Padding="14" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
-            <StackPanel>
-              <StackPanel>
-                <TextBlock Text="GIF stickers" FontWeight="SemiBold" />
-                <TextBlock Text="Add one, then drag it anywhere on the bar" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                  <Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddSticker_Click" AutomationProperties.AutomationId="AddSticker" />
-                  <Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearStickers_Click" AutomationProperties.AutomationId="ClearStickers" />
-                </StackPanel>
-              </StackPanel>
-              <ListBox x:Name="StickerPicker" Margin="0,13,0,0" Background="Transparent" BorderThickness="0"
-                       ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="StickerPicker_SelectionChanged"
-                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="StickerPicker">
-                <ListBox.ItemsPanel>
-                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" />
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <Grid Margin="0,13,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="StickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="24" Maximum="110" ValueChanged="StickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="StickerSizeSlider" />
-              </Grid>
-              <Grid Margin="0,7,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="StickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="StickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="StickerOpacitySlider" />
-              </Grid>
-            </StackPanel>
-          </Border>
-
-          <Grid Margin="0,19,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Top widget bar" FontWeight="SemiBold" /><TextBlock Text="Clock, performance, connection, power, focus and news" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="TopOverlayCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="TopOverlayCheck_Click" AutomationProperties.AutomationId="TopOverlayEnabled" />
-          </Grid>
-          <Border x:Name="TopOverlayOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
-            <StackPanel>
-              <TextBlock Text="TOP BAR DIRECTION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,7"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="TopBarOrientation_Click" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="TopBarOrientation_Click" /></WrapPanel>
-              <TextBlock Text="TOP BAR WIDGETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <Grid Margin="0,9,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
-              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
-              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
-              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
-              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer  ·  PRO" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
-              <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Daily news" FontSize="11" /><CheckBox x:Name="TopNewsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="News" /></Grid>
-              <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus length" FontSize="11" VerticalAlignment="Center" /><WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="5m" Tag="5" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="15m" Tag="15" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="25m" Tag="25" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="50m" Tag="50" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="90m" Tag="90" Click="FocusDuration_Click" /></WrapPanel></Grid>
-
-              <TextBlock Text="TOP BAR GIFS" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <TextBlock Text="Separate stickers for the optional top bar" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="10" />
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddTopSticker_Click" AutomationProperties.AutomationId="AddTopSticker" /><Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearTopStickers_Click" AutomationProperties.AutomationId="ClearTopStickers" /></StackPanel>
-              <ListBox x:Name="TopStickerPicker" Margin="0,4,0,0" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="TopStickerPicker_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="TopStickerPicker"><ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" /></DataTemplate></ListBox.ItemTemplate></ListBox>
-              <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="20" Maximum="70" ValueChanged="TopStickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="TopStickerSizeSlider" /></Grid>
-              <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="TopStickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="TopStickerOpacitySlider" /></Grid>
-            </StackPanel>
-          </Border>
-          <Border Margin="0,17,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
-                  AutomationProperties.AutomationId="StartMenuAppearanceOptions">
-            <StackPanel>
-              <TextBlock Text="WINDOWS MENU" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <TextBlock Text="Shape the launcher without changing the rest of GlassBar" Margin="0,4,0,0"
-                         Foreground="{StaticResource MutedText}" FontSize="10" TextWrapping="Wrap" />
-
-              <Grid Margin="0,12,8,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel>
-                  <TextBlock Text="Ambient effect" FontSize="11" />
-                  <TextBlock Text="Use the current bar animation" Foreground="{StaticResource MutedText}" FontSize="10" />
-                </StackPanel>
-                <CheckBox x:Name="StartMenuEffectsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
-                          Click="StartMenuEffectsCheck_Click" AutomationProperties.AutomationId="StartMenuEffectsEnabled" />
-              </Grid>
-
-              <TextBlock Text="LAYOUT DENSITY" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,7,0,0">
-                <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="StartMenuDensity_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Comfortable" Tag="Comfortable" Click="StartMenuDensity_Click" />
-              </WrapPanel>
-
-              <TextBlock Text="SURFACE" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Midnight" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#1A2431" Tag="#1A2431" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Slate" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#080B10" Tag="#080B10" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Black" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#16251F" Tag="#16251F" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Forest" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#271B20" Tag="#271B20" CommandParameter="Background" Click="StartMenuColor_Click" ToolTip="Garnet" />
+                <Border x:Name="AudioVisualizerOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
+                        Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="VISUAL STYLE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,5">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Spectrum" Tag="Spectrum" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Mirror" Tag="Mirror" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Wave" Tag="Wave" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Pulse" Tag="Pulse" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Rain" Tag="Rain" CommandParameter="Mode" Click="AudioVisualizerChoice_Click" />
+                    </WrapPanel>
+                    <TextBlock Text="COLOR" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,5">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Ocean" Tag="Ocean" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Sunset" Tag="Sunset" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Neon" Tag="Neon" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Mono" Tag="Mono" CommandParameter="Palette" Click="AudioVisualizerChoice_Click" />
+                    </WrapPanel>
+                    <TextBlock Text="BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,5">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Tint" Tag="Tint" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="Transparent" CommandParameter="Background" Click="AudioVisualizerChoice_Click" />
+                    </WrapPanel>
+                    <TextBlock Text="BORDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,5">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Subtle" Tag="Subtle" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Accent" Tag="Accent" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="None" Tag="None" CommandParameter="Border" Click="AudioVisualizerChoice_Click" />
+                    </WrapPanel>
+                    <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Sensitivity" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSensitivitySlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.5" Maximum="2" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Smoothing" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioSmoothingSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0.65" Maximum="0.96" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Glow" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioGlowSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="0" Maximum="1" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Detail" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioBarCountSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="12" Maximum="64" TickFrequency="2" IsSnapToTickEnabled="True" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Width" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioWidthSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="260" Maximum="720" TickFrequency="10" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Height" FontSize="11" VerticalAlignment="Center" /><Slider x:Name="AudioHeightSlider" Grid.Column="1" Style="{StaticResource GlassSlider}" Minimum="96" Maximum="300" TickFrequency="4" ValueChanged="AudioVisualizerSlider_ValueChanged" /></Grid>
+                  </StackPanel>
+                </Border>
               </StackPanel>
 
-              <TextBlock Text="HIGHLIGHT" Margin="0,11,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Sky" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Violet" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Mint" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Rose" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="StartMenuColor_Click" ToolTip="Amber" />
+              <StackPanel x:Name="SettingsPageOverlay" Visibility="Collapsed">
+                <Grid Margin="0,0,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Top widget bar" FontWeight="SemiBold" /><TextBlock Text="Clock, performance, connection, power, focus and news" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="TopOverlayCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="TopOverlayCheck_Click" AutomationProperties.AutomationId="TopOverlayEnabled" />
+                </Grid>
+
+                <Border x:Name="TopOverlayOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="TOP BAR DIRECTION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,7"><Button Style="{StaticResource ChoiceButton}" Content="Horizontal" Tag="Horizontal" Click="TopBarOrientation_Click" /><Button Style="{StaticResource ChoiceButton}" Content="Vertical" Tag="Vertical" Click="TopBarOrientation_Click" /></WrapPanel>
+                    <TextBlock Text="TOP BAR WIDGETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <Grid Margin="0,9,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Clock and date" FontSize="11" /><CheckBox x:Name="TopClockCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Clock" /></Grid>
+                    <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="CPU and RAM  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPerformanceCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Performance" /></Grid>
+                    <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Connection" FontSize="11" /><CheckBox x:Name="TopConnectionCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Connection" /></Grid>
+                    <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Power  ·  PRO" FontSize="11" /><CheckBox x:Name="TopPowerCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Power" /></Grid>
+                    <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus timer  ·  PRO" FontSize="11" /><CheckBox x:Name="TopFocusCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="Focus" /></Grid>
+                    <Grid Margin="0,6,8,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Daily news" FontSize="11" /><CheckBox x:Name="TopNewsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" Click="TopWidgetCheck_Click" Tag="News" /></Grid>
+                    <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Focus length" FontSize="11" VerticalAlignment="Center" /><WrapPanel Grid.Column="1"><Button Style="{StaticResource ChoiceButton}" Content="5m" Tag="5" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="15m" Tag="15" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="25m" Tag="25" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="50m" Tag="50" Click="FocusDuration_Click" /><Button Style="{StaticResource ChoiceButton}" Content="90m" Tag="90" Click="FocusDuration_Click" /></WrapPanel></Grid>
+
+                    <TextBlock Text="TOP BAR GIFS" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <TextBlock Text="Separate stickers for the optional top bar" Margin="0,3,0,0" Foreground="{StaticResource MutedText}" FontSize="10" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"><Button Style="{StaticResource ChoiceButton}" Content="Add GIF" Click="AddTopSticker_Click" AutomationProperties.AutomationId="AddTopSticker" /><Button Style="{StaticResource ChoiceButton}" Content="Clear" Click="ClearTopStickers_Click" AutomationProperties.AutomationId="ClearTopStickers" /></StackPanel>
+                    <ListBox x:Name="TopStickerPicker" Margin="0,4,0,0" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource StickerPickerItem}" SelectionChanged="TopStickerPicker_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="TopStickerPicker"><ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" MaxWidth="112" TextTrimming="CharacterEllipsis" FontSize="11" /></DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected size" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerSizeSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="20" Maximum="70" ValueChanged="TopStickerSizeSlider_ValueChanged" AutomationProperties.AutomationId="TopStickerSizeSlider" /></Grid>
+                    <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions><TextBlock Text="Selected opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" /><Slider x:Name="TopStickerOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.15" Maximum="1" ValueChanged="TopStickerOpacitySlider_ValueChanged" AutomationProperties.AutomationId="TopStickerOpacitySlider" /></Grid>
+                  </StackPanel>
+                </Border>
               </StackPanel>
 
-              <Grid Margin="0,11,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="Surface opacity" FontSize="11" /><TextBlock x:Name="StartMenuOpacityValueText" Text="94%" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
-                <Slider x:Name="StartMenuOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.55" Maximum="0.99"
-                        ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuOpacity" />
-              </Grid>
-              <Grid Margin="0,7,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="Corner shape" FontSize="11" /><TextBlock x:Name="StartMenuCornerValueText" Text="18 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
-                <Slider x:Name="StartMenuCornerSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="8" Maximum="26" TickFrequency="2"
-                        ValueChanged="StartMenuAppearanceSlider_ValueChanged" AutomationProperties.AutomationId="StartMenuCornerRadius" />
-              </Grid>
-            </StackPanel>
-          </Border>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Use Windows search" FontWeight="SemiBold" /><TextBlock Text="Magnifier opens the original Windows Search" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="UseWindowsSearchCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
-                      Checked="UseWindowsSearchCheck_Changed" Unchecked="UseWindowsSearchCheck_Changed" AutomationProperties.AutomationId="UseWindowsSearch" />
-          </Grid>
-          <Border Margin="0,13,0,0" Padding="13" CornerRadius="14" Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
-            <StackPanel>
-              <TextBlock Text="QUICK SEARCH" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <TextBlock Text="Click a shortcut, then press the new key combination." Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
-              <Grid Margin="0,9,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Open applications" VerticalAlignment="Center" FontSize="11" />
-                <TextBox x:Name="SearchAppsHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
-                         Tag="Apps" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchAppsHotkey" />
-              </Grid>
-              <Grid Margin="0,6,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Search the web" VerticalAlignment="Center" FontSize="11" />
-                <TextBox x:Name="SearchWebHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
-                         Tag="Web" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchWebHotkey" />
-              </Grid>
-              <Grid Margin="0,6,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Search everything" VerticalAlignment="Center" FontSize="11" />
-                <TextBox x:Name="SearchCombinedHotkeyBox" Grid.Column="1" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Cursor="Hand"
-                         Tag="Combined" PreviewKeyDown="SearchHotkeyBox_PreviewKeyDown" AutomationProperties.AutomationId="SearchCombinedHotkey" />
-              </Grid>
-              <TextBlock x:Name="SearchHotkeyStatus" Margin="0,7,0,0" FontSize="10" Foreground="{StaticResource MutedText}" TextWrapping="Wrap" />
-              <TextBlock Text="Disabled automatically while a fullscreen game is active" Margin="0,5,0,0" FontSize="10" Foreground="{StaticResource MutedText}" />
-              <Grid Margin="0,12,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="Palette width" FontSize="11" /><TextBlock x:Name="SearchPaletteWidthValueText" Text="620 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
-                <Slider x:Name="SearchPaletteWidthSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="480" Maximum="900" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteWidth" />
-              </Grid>
-              <Grid Margin="0,8,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="Palette height" FontSize="11" /><TextBlock x:Name="SearchPaletteHeightValueText" Text="472 px" Foreground="{StaticResource MutedText}" FontSize="10" /></StackPanel>
-                <Slider x:Name="SearchPaletteHeightSlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="300" Maximum="720" TickFrequency="20" ValueChanged="SearchPaletteSize_ValueChanged" AutomationProperties.AutomationId="SearchPaletteHeight" />
-              </Grid>
-              <TextBlock Text="BACKGROUND" Margin="0,13,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#111722" Tag="#111722" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Midnight" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#243142" Tag="#243142" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Slate" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#05070A" Tag="#05070A" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Black" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#241D3B" Tag="#241D3B" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Violet" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Background" Click="SearchPaletteColor_Click" ToolTip="Light" />
-              </StackPanel>
-              <TextBlock Text="TEXT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#F8FAFC" Tag="#F8FAFC" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="White" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#BEEBFF" Tag="#BEEBFF" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Sky" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#CFFFE5" Tag="#CFFFE5" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Mint" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#0B0F14" Tag="#0B0F14" CommandParameter="Text" Click="SearchPaletteColor_Click" ToolTip="Black" />
-              </StackPanel>
-              <TextBlock Text="HIGHLIGHT" Margin="0,10,0,0" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                <Button Style="{StaticResource AccentSwatch}" Background="#7DD3FC" Tag="#7DD3FC" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Sky" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#A78BFA" Tag="#A78BFA" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Violet" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#34D399" Tag="#34D399" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Mint" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FB7185" Tag="#FB7185" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Rose" />
-                <Button Style="{StaticResource AccentSwatch}" Background="#FBBF24" Tag="#FBBF24" CommandParameter="Accent" Click="SearchPaletteColor_Click" ToolTip="Amber" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated visual window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="AltTabEnabledCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
-                      Click="AltTabEnabledCheck_Click" AutomationProperties.AutomationId="AltTabEnabled" />
-          </Grid>
-          <Border x:Name="AltTabOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
-                  Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
-            <StackPanel>
-              <TextBlock Text="SWITCHER SIZE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,12">
-                <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="AltTabLayout_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Full screen" Tag="Fullscreen" Click="AltTabLayout_Click" />
-              </WrapPanel>
-              <TextBlock Text="SWITCHER BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
-              <WrapPanel Margin="0,8,0,4">
-                <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" Click="AltTabBackground_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Dark" Tag="Dark" Click="AltTabBackground_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Transparent" Tag="Transparent" Click="AltTabBackground_Click" />
-                <Button Style="{StaticResource ChoiceButton}" Content="Choose image" Click="ChooseAltTabBackground_Click" />
-              </WrapPanel>
-              <TextBlock x:Name="AltTabBackgroundImageText" Margin="2,2,0,3" Text="No image selected"
-                         Foreground="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" />
-              <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Background opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
-                <Slider x:Name="AltTabOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1"
-                        VerticalAlignment="Center" ValueChanged="AltTabOpacitySlider_ValueChanged" AutomationProperties.AutomationId="AltTabOpacity" />
-              </Grid>
-            </StackPanel>
-          </Border>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Hide Windows taskbar" FontWeight="SemiBold" /><TextBlock Text="Restored automatically on exit" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="HideNativeCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideNativeCheck_Click" AutomationProperties.AutomationId="HideNativeTaskbar" />
-          </Grid>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Hide in fullscreen games" FontWeight="SemiBold" /><TextBlock Text="Browser videos and media players keep GlassBar visible" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="HideInFullscreenCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="HideInFullscreenCheck_Click" AutomationProperties.AutomationId="HideInFullscreenApps" />
-          </Grid>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Start with Windows" FontWeight="SemiBold" /><TextBlock Text="Launch when you sign in" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
-            <CheckBox x:Name="StartWithWindowsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="StartWithWindowsCheck_Click" AutomationProperties.AutomationId="StartWithWindows" />
-          </Grid>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Group stacked icons" FontWeight="SemiBold" /><TextBlock Text="Multiple windows of the same app share one icon; click to fan them out" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
-            <CheckBox x:Name="GroupStackedIconsCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="GroupStackedIconsCheck_Click" AutomationProperties.AutomationId="GroupStackedIcons" />
-          </Grid>
-          <Grid Margin="0,17,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Notification badges" FontWeight="SemiBold" /><TextBlock Text="Show a count on an icon when it has notifications (requires Windows notification access)" Foreground="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="220" /></StackPanel>
-            <CheckBox x:Name="ShowNotificationBadgesCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center" Click="ShowNotificationBadgesCheck_Click" AutomationProperties.AutomationId="ShowNotificationBadges" />
-          </Grid>
+              <StackPanel x:Name="SettingsPageAltTab" Visibility="Collapsed">
+                <Grid Margin="0,0,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="GlassBar Alt + Tab" FontWeight="SemiBold" /><TextBlock Text="Animated visual window switcher" Foreground="{StaticResource MutedText}" FontSize="11" /></StackPanel>
+                  <CheckBox x:Name="AltTabEnabledCheck" Style="{StaticResource GlassToggle}" Grid.Column="1" VerticalAlignment="Center"
+                            Click="AltTabEnabledCheck_Click" AutomationProperties.AutomationId="AltTabEnabled" />
+                </Grid>
 
-          <DockPanel Margin="0,22,0,0">
-            <Button Style="{StaticResource ChoiceButton}" Content="Exit GlassBar" Click="Exit_Click" AutomationProperties.AutomationId="ExitGlassBar" />
-            <TextBlock DockPanel.Dock="Right" Text="Ctrl + Alt + Shift + T" VerticalAlignment="Center" FontSize="10" Foreground="{StaticResource MutedText}" />
-          </DockPanel>
-        </StackPanel>
-      </ScrollViewer>
+                <Border x:Name="AltTabOptionsPanel" Margin="0,12,0,0" Padding="13" CornerRadius="14"
+                        Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="SWITCHER SIZE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,12">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Compact" Tag="Compact" Click="AltTabLayout_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Full screen" Tag="Fullscreen" Click="AltTabLayout_Click" />
+                    </WrapPanel>
+                    <TextBlock Text="SWITCHER BACKGROUND" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedText}" />
+                    <WrapPanel Margin="0,8,0,4">
+                      <Button Style="{StaticResource ChoiceButton}" Content="Glass" Tag="Glass" Click="AltTabBackground_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Dark" Tag="Dark" Click="AltTabBackground_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Transparent" Tag="Transparent" Click="AltTabBackground_Click" />
+                      <Button Style="{StaticResource ChoiceButton}" Content="Choose image" Click="ChooseAltTabBackground_Click" />
+                    </WrapPanel>
+                    <TextBlock x:Name="AltTabBackgroundImageText" Margin="2,2,0,3" Text="No image selected"
+                               Foreground="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                    <Grid Margin="0,5,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="165" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="Background opacity" VerticalAlignment="Center" Foreground="{StaticResource MutedText}" FontSize="11" />
+                      <Slider x:Name="AltTabOpacitySlider" Style="{StaticResource GlassSlider}" Grid.Column="1" Minimum="0.2" Maximum="1"
+                              VerticalAlignment="Center" ValueChanged="AltTabOpacitySlider_ValueChanged" AutomationProperties.AutomationId="AltTabOpacity" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="SettingsPagePro" Visibility="Collapsed">
+                <Border x:Name="ProPanel" Margin="0,0,0,0" Padding="14" CornerRadius="14"
+                        Background="#121EC8F0" BorderBrush="#3A7DD3FC" BorderThickness="1"
+                        AutomationProperties.AutomationId="ProPanel">
+                  <StackPanel>
+                    <DockPanel LastChildFill="True">
+                      <Border DockPanel.Dock="Right" Padding="9,4" CornerRadius="9" Background="#257DD3FC" Margin="12,0,0,0">
+                        <TextBlock x:Name="ProStatusText" Text="LOCKED" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#BEEBFF" AutomationProperties.AutomationId="ProStatus" />
+                      </Border>
+                      <StackPanel>
+                        <TextBlock Text="GlassBar Pro" FontWeight="SemiBold" />
+                        <TextBlock Text="$5 once · lifetime effects unlock" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" />
+                      </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock Text="Unlock Snow, Fireflies, Pulse, and the Custom Effect Lab. We verify the PayPal payment, then email a signed lifetime key to the payment email."
+                               TextWrapping="Wrap" Foreground="#C9D6E5" FontSize="11" Margin="0,11,0,0" />
+
+                    <StackPanel x:Name="ProEntryPanel" Margin="0,12,0,0">
+                      <Button x:Name="BuyProButton" Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left"
+                              Content="Buy Pro · $5 with PayPal" Click="BuyPro_Click" AutomationProperties.AutomationId="BuyPro" />
+                      <TextBox x:Name="LicenseKeyBox" Style="{StaticResource GlassTextBox}" Height="68" Margin="0,4,0,0"
+                               TextWrapping="Wrap" VerticalContentAlignment="Top" MaxLength="2048"
+                               AutomationProperties.Name="GlassBar Pro license key" AutomationProperties.AutomationId="LicenseKey" />
+                      <Button Style="{StaticResource ChoiceButton}" HorizontalAlignment="Left" Margin="0,9,0,0"
+                              Content="Activate license" Click="ActivateLicense_Click" AutomationProperties.AutomationId="ActivateLicense" />
+                    </StackPanel>
+
+                    <TextBlock x:Name="LicenseMessageText" Text="Rain and Aurora are free."
+                               TextWrapping="Wrap" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,7,0,0"
+                               AutomationProperties.AutomationId="LicenseMessage" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+        </Grid>
+      </Grid>
     </Border>
 
     <Border x:Name="BackgroundProcessesPanel" Grid.Row="0" Width="342" Height="312"
@@ -981,6 +1056,8 @@
             </Button>
             <Button Style="{StaticResource TinyButton}" Click="QuickSettings_Click" ToolTip="Quick settings" FontFamily="Segoe MDL2 Assets" Content="&#xE9CE;" />
             <Button Style="{StaticResource TinyButton}" Click="QuickSettings_Click" ToolTip="Volume and network" FontFamily="Segoe MDL2 Assets" Content="&#xE767;" />
+            <TextBlock x:Name="BatteryText" Text="--" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"
+                       Margin="0,0,8,0" Visibility="Collapsed" ToolTip="Battery" AutomationProperties.AutomationId="BatteryText" />
             <Button Style="{StaticResource BarButton}" Click="Clock_Click" ToolTip="Calendar and notifications" Padding="9,3">
               <StackPanel>
                 <TextBlock x:Name="ClockText" Text="9:41" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Right" />

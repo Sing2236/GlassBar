@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly CommunityDesignService _communityDesignService = new();
     private readonly ObservableCollection<TaskbarIconGroup> _apps = [];
     private readonly NotificationBadgeService _notificationBadgeService = new();
+    private readonly SystemMetricsService _metrics = new();
     private readonly ObservableCollection<PinnedAppConfig> _pinnedApps = [];
     private readonly ObservableCollection<BackgroundProcessItem> _backgroundProcesses = [];
     private readonly Dictionary<int, HotkeyGesture> _registeredSearchHotkeys = [];
@@ -36,6 +37,9 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _taskbarGuardTimer;
     private readonly DispatcherTimer _fullscreenTimer;
     private readonly bool _keepVisibleForUiTests;
+    // Selected category in the settings panel's left rail; matches the page
+    // container names (SettingsPage*) and the rail buttons' Content.
+    private string _settingsPage = "Look";
     private StartMenuWindow? _startMenu;
     private SearchPaletteWindow? _searchPalette;
     private TopOverlayWindow? _topOverlay;
@@ -451,6 +455,19 @@ public partial class MainWindow : Window
         var now = DateTime.Now;
         ClockText.Text = now.ToString("h:mm");
         DateText.Text = now.ToString("MMM d").ToUpperInvariant();
+
+        // Laptops show the battery percentage; desktops hide the element
+        // entirely (no "Desktop" label, no blank gap).
+        var power = _metrics.PowerLabel();
+        if (string.Equals(power, "Desktop", StringComparison.Ordinal))
+        {
+            BatteryText.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            BatteryText.Text = power;
+            BatteryText.Visibility = Visibility.Visible;
+        }
 
         _allApps = _windowService.GetOpenWindows();
         if (_settings.ShowNotificationBadges)
@@ -1010,9 +1027,36 @@ public partial class MainWindow : Window
         }
         _settingsOpen = open;
         SettingsPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        if (open) ShowSettingsPage(_settingsPage);
         StickerCanvas.IsHitTestVisible = open;
         UpdateWindowHeight();
         RenderStickers();
+    }
+
+    /// <summary>
+    /// Shows one settings category page and highlights its rail button.
+    /// </summary>
+    private void SettingsNav_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Content: string category }) ShowSettingsPage(category);
+    }
+
+    private void ShowSettingsPage(string category)
+    {
+        _settingsPage = category;
+        SettingsPageLook.Visibility = category == "Look" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPageEffects.Visibility = category == "Effects" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPageAudio.Visibility = category == "Audio" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPageOverlay.Visibility = category == "Overlay" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPageAltTab.Visibility = category == "Alt-Tab" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPagePro.Visibility = category == "Pro" ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var (button, name) in new (Button, string)[]
+                 {
+                     (SettingsNavLook, "Look"), (SettingsNavEffects, "Effects"), (SettingsNavAudio, "Audio"),
+                     (SettingsNavOverlay, "Overlay"), (SettingsNavAltTab, "Alt-Tab"), (SettingsNavPro, "Pro")
+                 })
+            button.Tag = name == category ? "Selected" : null;
     }
 
     private void OpenStartMenu()
@@ -1048,6 +1092,10 @@ public partial class MainWindow : Window
         _settings.CommunityAnimationActive = false;
         EffectsLayer.Mode = effect;
         CustomEffectPanel.Visibility = effect == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        // The lab lives on the Effects page. Revealing it without going there
+        // leaves it behind a collapsed page, and picking "Custom" from the Look
+        // page then looks like it did nothing at all.
+        if (effect == "Custom") ShowSettingsPage("Effects");
         _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();
     }
@@ -1076,6 +1124,8 @@ public partial class MainWindow : Window
         EffectsLayer.RefreshCustomEffect(rebuildParticles);
         _topOverlay?.ApplyAppearance(_settings);
         CustomEffectPanel.Visibility = Visibility.Visible;
+        // Same reason as Effect_Click: activating the lab has to bring its page up.
+        ShowSettingsPage("Effects");
         CustomEffectSummary.Text = $"{_settings.CustomEffect.Shape} · {_settings.CustomEffect.Motion}";
         SaveSettings();
     }
@@ -1248,6 +1298,7 @@ public partial class MainWindow : Window
     {
         if (_licenseService.IsPro) return true;
         LicenseMessageText.Text = $"{feature} requires the $5 GlassBar Pro lifetime unlock.";
+        ShowSettingsPage("Pro");
         ProPanel.BringIntoView();
         return false;
     }
