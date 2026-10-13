@@ -70,6 +70,8 @@ public partial class MainWindow : Window
     public MainWindow(bool safeMode = false, bool keepVisibleForUiTests = false)
     {
         InitializeComponent();
+        // Shown in the settings footer beside the update check.
+        AboutVersionText.Text = $"GlassBar {UpdateService.CurrentVersion.ToString(3)}";
         _keepVisibleForUiTests = keepVisibleForUiTests;
         WidthSlider.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(WidthSlider_DragStarted));
         WidthSlider.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(WidthSlider_DragCompleted));
@@ -983,6 +985,25 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(!_settingsOpen);
     private void CloseSettings_Click(object sender, RoutedEventArgs e) => SetSettingsOpen(false);
+
+    /// <summary>
+    /// "Check for updates" in the settings panel: runs the same check the timer
+    /// runs, but on demand and with something to say about the outcome, so the
+    /// whole update path can be exercised without waiting four hours or restarting.
+    /// </summary>
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        CheckUpdatesButton.IsEnabled = false;
+        UpdateStatusText.Text = "Checking for updates...";
+        try
+        {
+            UpdateStatusText.Text = await ((App)Application.Current).CheckForUpdatesNowAsync(this);
+        }
+        finally
+        {
+            CheckUpdatesButton.IsEnabled = true;
+        }
+    }
 
     private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
