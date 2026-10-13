@@ -5,7 +5,11 @@ param(
     [string]$Version,
 
     [string]$PrivateKeyPath = (Join-Path $env:USERPROFILE '.glassbar\update-signing-private.pem'),
-    [string]$Repository = 'Sing2236/GlassBar'
+    [string]$Repository = 'Sing2236/GlassBar',
+
+    # Optional. When omitted, the patch notes are built from the commit subjects
+    # since the last published release, which is what they should say anyway.
+    [string]$ReleaseNotes = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,6 +29,11 @@ $tag = "v$Version"
 $existingTags = @(& gh release list --repo $Repository --limit 100 --json tagName --jq '.[].tagName')
 if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing GitHub releases.' }
 if ($existingTags -contains $tag) { throw "Release $tag already exists." }
+
+# The last published tag, so the patch notes can be built from what has actually
+# changed since it rather than from the whole history.
+$previousTag = (& gh release list --repo $Repository --limit 1 --json tagName --jq '.[0].tagName' 2>$null)
+$previousTag = if ($previousTag) { "$previousTag".Trim() } else { '' }
 
 $artifactRoot = Join-Path $projectRoot "artifacts\release-$Version"
 $publishDirectory = Join-Path $artifactRoot 'app'
@@ -66,9 +75,24 @@ if (-not $publishedVersion.StartsWith("$Version.", [StringComparison]::Ordinal))
 if ($LASTEXITCODE -ne 0) { throw 'The installer build failed.' }
 
 $installerSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $installerPath).Hash.ToLowerInvariant()
+
+# The patch notes the update prompt will show. Generated from the commits since
+# the last release unless the caller supplied their own.
+$notesPath = Join-Path $artifactRoot 'release-notes.txt'
+if ($ReleaseNotes.Trim()) {
+    $notesBody = $ReleaseNotes.Trim()
+} else {
+    $range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
+    $notesBody = (@(& git -C $projectRoot log --no-merges --pretty=format:'- %s' $range) -join "`n").Trim()
+}
+if (-not $notesBody) { $notesBody = 'Maintenance release.' }
+Set-Content -LiteralPath $notesPath -Value $notesBody -Encoding utf8
+Write-Host "Patch notes:"
+Write-Host $notesBody
+
 $signingTool = Join-Path $projectRoot 'tools\GlassBar.LicenseIssuer\GlassBar.LicenseIssuer.csproj'
 & dotnet run --project $signingTool -c Release -- sign-update `
-    $PrivateKeyPath $manifestPath $Version $installerUrl $installerSha256 $Repository
+    $PrivateKeyPath $manifestPath $Version $installerUrl $installerSha256 $Repository $notesPath
 if ($LASTEXITCODE -ne 0) { throw 'Update manifest signing failed.' }
 
 & dotnet run --project $signingTool -c Release -- verify-update `
@@ -76,6 +100,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Update manifest signing failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Update manifest verification failed.' }
 
 $releaseNotes = @"
+$notesBody
+
+---
+
 Secure update release built from commit $commit.
 
 - Update metadata is signed with GlassBar's offline release key.

@@ -68,13 +68,15 @@ static int IssueLicense(string[] arguments)
 
 static int SignUpdate(string[] arguments)
 {
-    if (arguments.Length != 7) return ShowUsage();
+    if (arguments.Length is not (7 or 8)) return ShowUsage();
     var privatePath = Path.GetFullPath(arguments[1]);
     var outputPath = Path.GetFullPath(arguments[2]);
     var version = arguments[3].Trim();
     var installerUrl = arguments[4].Trim();
     var sha256 = arguments[5].Trim().ToLowerInvariant();
     var expectedRepository = arguments[6].Trim();
+    // Optional eighth argument: a file of patch notes for the update prompt.
+    var notes = arguments.Length == 8 ? ReadNotesFile(arguments[7]) : string.Empty;
 
     ValidateUpdateFields(version, installerUrl, sha256, expectedRepository);
     if (!File.Exists(privatePath)) throw new FileNotFoundException("The update signing key was not found.", privatePath);
@@ -83,12 +85,30 @@ static int SignUpdate(string[] arguments)
     rsa.ImportFromPem(File.ReadAllText(privatePath));
     var signature = rsa.SignData(UpdateManifestSignatureCore.CreatePayload(version, installerUrl, sha256),
         HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-    var manifest = new UpdateManifest(version, installerUrl, sha256, Convert.ToBase64String(signature));
+    var manifest = new UpdateManifest(version, installerUrl, sha256, Convert.ToBase64String(signature), notes);
     Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
     File.WriteAllText(outputPath, JsonSerializer.Serialize(manifest,
         new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
     Console.WriteLine(outputPath);
     return 0;
+}
+
+/// <summary>
+/// The patch notes to carry in the manifest, or empty when there is no file.
+/// </summary>
+/// <remarks>
+/// They are written into the manifest but deliberately kept out of
+/// <see cref="UpdateManifestSignatureCore.CreatePayload"/>. Every GlassBar already
+/// installed verifies that exact byte string, so signing the notes too would make
+/// each of them reject the next manifest and strand it with no way to update. The
+/// notes are display text; the installer they describe is still pinned by the
+/// signed checksum.
+/// </remarks>
+static string ReadNotesFile(string path)
+{
+    var file = Path.GetFullPath(path);
+    if (!File.Exists(file)) throw new FileNotFoundException("The release notes file was not found.", file);
+    return File.ReadAllText(file);
 }
 
 static int VerifyUpdate(string[] arguments)
@@ -149,4 +169,5 @@ internal sealed record UpdateManifest(
     string Version,
     string InstallerUrl,
     string Sha256,
-    string Signature);
+    string Signature,
+    string Notes = "");
