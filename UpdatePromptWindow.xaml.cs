@@ -19,7 +19,21 @@ public partial class UpdatePromptWindow : Window
         _update = update;
         InitializeComponent();
         TitleText.Text = $"Update to GlassBar {update.Version}?";
+        ShowNotes(update.Notes);
         Closing += Window_Closing;
+    }
+
+    /// <summary>
+    /// Shows the patch notes, or shows nothing at all when there are none.
+    /// An empty "WHAT'S NEW" box would be worse than no box: it promises
+    /// information and delivers a blank panel.
+    /// </summary>
+    private void ShowNotes(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return;
+        NotesText.Text = notes;
+        NotesHeading.Visibility = Visibility.Visible;
+        NotesPanel.Visibility = Visibility.Visible;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)

@@ -67,6 +67,14 @@
         <TextBlock x:Name="TitleText" Text="Update to GlassBar" FontSize="20" FontWeight="SemiBold" />
         <TextBlock x:Name="MessageText" Margin="0,7,6,0" Foreground="#B7C5D5" FontSize="11" TextWrapping="Wrap"
                    Text="Install the update now and GlassBar will restart automatically, or keep working and decide later." />
+        <TextBlock x:Name="NotesHeading" Text="WHAT'S NEW" Margin="0,15,0,0" FontSize="10" FontWeight="SemiBold"
+                   Foreground="#9BAABD" Visibility="Collapsed" />
+        <Border x:Name="NotesPanel" Margin="0,6,0,0" Padding="10,8" CornerRadius="6"
+                Background="#14FFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1" Visibility="Collapsed">
+          <ScrollViewer MaxHeight="132" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <TextBlock x:Name="NotesText" Foreground="#B7C5D5" FontSize="11" TextWrapping="Wrap" LineHeight="16" />
+          </ScrollViewer>
+        </Border>
         <ProgressBar x:Name="DownloadProgress" Height="3" Margin="0,14,0,0" IsIndeterminate="True"
                      Foreground="#7DD3FC" Background="#24FFFFFF" Visibility="Collapsed" />
       </StackPanel>

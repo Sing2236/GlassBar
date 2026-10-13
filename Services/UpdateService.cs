@@ -37,7 +37,8 @@ internal static class UpdateService
             ValidateChecksum(manifest.Sha256);
 
             LogStatus($"Update {availableVersion} is available and ready for user confirmation.");
-            return new AvailableUpdate(availableVersion, installerUri, manifest.Sha256);
+            return new AvailableUpdate(availableVersion, installerUri, manifest.Sha256,
+                SanitizeNotes(manifest.Notes));
         }
         catch (Exception exception)
         {
@@ -117,6 +118,26 @@ internal static class UpdateService
     {
         if (expectedSha256.Length != 64 || expectedSha256.Any(character => !Uri.IsHexDigit(character)))
             throw new InvalidDataException("The update checksum is invalid.");
+    }
+
+    // The patch notes are text from a manifest that is only partly signed, and
+    // they end up in a window this app owns. So they are treated as untrusted:
+    // control characters out (a stray bell or escape in a commit subject should
+    // not reach the UI), length capped, and the result never assumed non-null.
+    private const int MaxNotesLength = 1200;
+
+    private static string SanitizeNotes(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return string.Empty;
+
+        var cleaned = new StringBuilder(notes.Length);
+        foreach (var character in notes.Replace("\r\n", "\n").Replace('\r', '\n'))
+        {
+            if (character == '\n' || !char.IsControl(character)) cleaned.Append(character);
+        }
+
+        var text = cleaned.ToString().Trim();
+        return text.Length > MaxNotesLength ? text[..MaxNotesLength].TrimEnd() + "..." : text;
     }
 
     private static bool LaunchUpdateBootstrap(string installerPath)
