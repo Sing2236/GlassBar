@@ -191,7 +191,7 @@ internal static class UpdateService
 
     private static string EscapePowerShellLiteral(string value) => value.Replace("'", "''");
 
-    private static void LogFailure(Exception exception)
+    internal static void LogFailure(Exception exception)
         => LogStatus($"{exception.GetType().Name}: {exception.Message}");
 
     private static void LogStatus(string message)

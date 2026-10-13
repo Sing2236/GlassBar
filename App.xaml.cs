@@ -152,23 +152,29 @@ public partial class App : Application
         await CheckForUpdateAsync(window);
     }
 
-    private async Task CheckForUpdateAsync(MainWindow window)
+    private async Task<(UpdateCheckResult Outcome, Version? Version)> CheckForUpdateAsync(
+        MainWindow window, bool manual = false)
     {
-        if (Interlocked.Exchange(ref _updateCheckRunning, 1) != 0) return;
+        if (Interlocked.Exchange(ref _updateCheckRunning, 1) != 0)
+            return (UpdateCheckResult.Busy, null);
         try
         {
             var update = _pendingUpdate ?? await UpdateService.CheckForUpdateAsync();
             if (update is null)
             {
                 SetUpdateCheckInterval(TimeSpan.FromHours(4));
-                return;
+                return (UpdateCheckResult.UpToDate, null);
             }
 
-            if (_dismissedUpdateVersion is not null && update.Version.Equals(_dismissedUpdateVersion))
+            // A version you said "not now" to is only skipped by the automatic
+            // check. Asking by hand means you want an answer, even if you declined
+            // that same version the last time it came up.
+            if (!manual && _dismissedUpdateVersion is not null
+                && update.Version.Equals(_dismissedUpdateVersion))
             {
                 _pendingUpdate = null;
                 SetUpdateCheckInterval(TimeSpan.FromHours(4));
-                return;
+                return (UpdateCheckResult.UpToDate, update.Version);
             }
 
             var handle = new WindowInteropHelper(window).Handle;
@@ -176,7 +182,7 @@ public partial class App : Application
             {
                 _pendingUpdate = update;
                 SetUpdateCheckInterval(TimeSpan.FromMinutes(5));
-                return;
+                return (UpdateCheckResult.Deferred, update.Version);
             }
 
             _pendingUpdate = null;
@@ -187,6 +193,13 @@ public partial class App : Application
                 Shutdown();
             else
                 _dismissedUpdateVersion = update.Version;
+            return (result == true ? UpdateCheckResult.Updating : UpdateCheckResult.Dismissed,
+                    update.Version);
+        }
+        catch (Exception exception)
+        {
+            UpdateService.LogFailure(exception);
+            return (UpdateCheckResult.Failed, null);
         }
         finally
         {
@@ -194,8 +207,39 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// The settings panel's "Check for updates". Runs the same check the timer does,
+    /// but on demand and with something to say about the outcome, so the updater can
+    /// be exercised without waiting four hours or restarting.
+    /// </summary>
+    internal async Task<string> CheckForUpdatesNowAsync(MainWindow window)
+    {
+        var (outcome, version) = await CheckForUpdateAsync(window, manual: true);
+        return outcome switch
+        {
+            UpdateCheckResult.UpToDate => $"GlassBar {UpdateService.CurrentVersion.ToString(3)} is up to date.",
+            UpdateCheckResult.Dismissed => $"Update to {version} is available.",
+            UpdateCheckResult.Deferred =>
+                "An update is available, but something is fullscreen. Try again in a moment.",
+            UpdateCheckResult.Busy => "A check is already running.",
+            UpdateCheckResult.Failed => "Could not reach the update server.",
+            _ => string.Empty,
+        };
+    }
+
     private void SetUpdateCheckInterval(TimeSpan interval)
     {
         if (_updateTimer is not null) _updateTimer.Interval = interval;
     }
+}
+
+/// <summary>How a single update check ended.</summary>
+internal enum UpdateCheckResult
+{
+    UpToDate,
+    Updating,
+    Dismissed,
+    Deferred,
+    Busy,
+    Failed
 }
