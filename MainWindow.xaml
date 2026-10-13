@@ -306,14 +306,19 @@
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- The close button is declared first and the title last, on purpose.
+             DockPanel.LastChildFill is true by default, so whichever child comes
+             last is given the leftover width. With the order the other way round
+             the button was that child, and having a fixed width it ended up
+             centred in the remaining space instead of against the right edge. -->
         <DockPanel Grid.Row="0">
+          <Button DockPanel.Dock="Right" Style="{StaticResource TinyButton}" Width="30" MinWidth="30" Height="30" Padding="0"
+                  FontSize="11" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Top"
+                  Click="CloseSettings_Click" ToolTip="Close settings" AutomationProperties.AutomationId="CloseSettings" />
           <StackPanel>
             <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" />
             <TextBlock Text="Changes are saved as you make them." Foreground="{StaticResource MutedText}" Margin="0,3,0,0" />
           </StackPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource TinyButton}" Width="30" MinWidth="30" Height="30" Padding="0"
-                  FontSize="11" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
-                  Click="CloseSettings_Click" ToolTip="Close settings" AutomationProperties.AutomationId="CloseSettings" />
         </DockPanel>
 
         <Grid Grid.Row="1" Margin="0,18,0,0">
