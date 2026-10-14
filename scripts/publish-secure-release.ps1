@@ -82,10 +82,25 @@ $notesPath = Join-Path $artifactRoot 'release-notes.txt'
 if ($ReleaseNotes.Trim()) {
     $notesBody = $ReleaseNotes.Trim()
 } else {
-    $range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
-    $notesBody = (@(& git -C $projectRoot log --no-merges --pretty=format:'- %s' $range) -join "`n").Trim()
+    # A tag created by `gh release create` lives on the remote, and a local clone
+    # may not have it yet - in which case "tag..HEAD" is unresolvable, git fails,
+    # and the range yields nothing. Fetch first, and if it still will not resolve
+    # fall back to the most recent commits rather than writing a placeholder: these
+    # notes are what the update prompt shows the user, so a silent "Maintenance
+    # release." publishes a release with nothing to say for itself. That happened
+    # on v1.0.5 and had to be re-signed by hand.
+    & git -C $projectRoot fetch --tags --quiet 2>$null | Out-Null
+    $range = if ($previousTag) { "$previousTag..$commit" } else { '' }
+    $lines = if ($range) { @(& git -C $projectRoot log --no-merges --pretty=format:'- %s' $range 2>$null) } else { @() }
+    if (-not ("$($lines -join '')".Trim())) {
+        Write-Warning "Could not resolve '$range' for the patch notes; falling back to the most recent commits."
+        $lines = @(& git -C $projectRoot log --no-merges --pretty=format:'- %s' -n 15 $commit 2>$null)
+    }
+    $notesBody = ($lines -join "`n").Trim()
+    if (-not $notesBody) {
+        throw 'Could not determine any patch notes. Refusing to publish a release whose notes are empty.'
+    }
 }
-if (-not $notesBody) { $notesBody = 'Maintenance release.' }
 Set-Content -LiteralPath $notesPath -Value $notesBody -Encoding utf8
 Write-Host "Patch notes:"
 Write-Host $notesBody
