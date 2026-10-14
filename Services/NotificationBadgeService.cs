@@ -1,4 +1,5 @@
 using GlassBar.Models;
+using Windows.UI.Notifications;
 using Windows.UI.Notifications.Management;
 
 namespace GlassBar.Services;
@@ -74,21 +75,52 @@ public sealed class NotificationBadgeService
             var notifications = _listener.GetNotificationsAsync(Windows.UI.Notifications.NotificationKinds.Toast)
                 .AsTask().GetAwaiter().GetResult();
 
-            var processName = app.ProcessName;
-            var title = app.Title;
-
-            return notifications.Count(notification =>
-            {
-                var displayName = notification.AppInfo?.DisplayInfo?.DisplayName;
-                if (string.IsNullOrWhiteSpace(displayName)) return false;
-                return displayName.Contains(processName, StringComparison.OrdinalIgnoreCase) ||
-                       processName.Contains(displayName, StringComparison.OrdinalIgnoreCase) ||
-                       title.Contains(displayName, StringComparison.OrdinalIgnoreCase);
-            });
+            return notifications.Count(notification => Matches(notification, app.ProcessName, app.Title));
         }
         catch
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Sets every app's NotificationCount from a single notification snapshot.
+    /// GetCount above does the same blocking WinRT fetch, but once per app;
+    /// calling it in a loop over the open windows repeats an identical query
+    /// for every app in the same tick. This fetches the list once and scores
+    /// every app against that one snapshot, using the exact same match
+    /// predicate, so which app gets which count is unchanged.
+    ///
+    /// As with GetCount, counts are left at 0 when access hasn't been granted
+    /// (or the listener isn't ready), and on any failure -- the caller's
+    /// freshly built AppItems already default to 0.
+    /// </summary>
+    public void ApplyCounts(IReadOnlyList<AppItem> apps)
+    {
+        if (!_accessGranted || _listener is null) return;
+        if (apps.Count == 0) return;
+
+        IReadOnlyList<UserNotification> notifications;
+        try
+        {
+            notifications = _listener.GetNotificationsAsync(Windows.UI.Notifications.NotificationKinds.Toast)
+                .AsTask().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            return;
+        }
+
+        foreach (var app in apps)
+            app.NotificationCount = notifications.Count(notification => Matches(notification, app.ProcessName, app.Title));
+    }
+
+    private static bool Matches(UserNotification notification, string processName, string title)
+    {
+        var displayName = notification.AppInfo?.DisplayInfo?.DisplayName;
+        if (string.IsNullOrWhiteSpace(displayName)) return false;
+        return displayName.Contains(processName, StringComparison.OrdinalIgnoreCase) ||
+               processName.Contains(displayName, StringComparison.OrdinalIgnoreCase) ||
+               title.Contains(displayName, StringComparison.OrdinalIgnoreCase);
     }
 }

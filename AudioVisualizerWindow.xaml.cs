@@ -27,6 +27,15 @@ public partial class AudioVisualizerWindow : Window
         _timer.Tick += (_, _) => DrawFrame();
         Loaded += (_, _) => PositionWindow();
         Closed += (_, _) => { _timer.Stop(); _meter.Dispose(); };
+        // Hide() does not fire Unloaded, so without this the 34ms timer keeps reading WASAPI
+        // and mutating up to 64 rectangles while the window is invisible (fullscreen mode).
+        // Visibility only - no silence gate, because Wave/Rain animate from the wall-clock
+        // term and stopping on a ~0 peak would visibly freeze them.
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) { DrawFrame(); _timer.Start(); }
+            else _timer.Stop();
+        };
         _timer.Start();
     }
 
@@ -37,6 +46,10 @@ public partial class AudioVisualizerWindow : Window
         var count = Math.Clamp(_settings.AudioVisualizerBarCount, 12, 64);
         _history = new double[count];
         var (start, end) = GetPalette();
+        // Frozen and shared: BuildBars runs on every audio settings slider tick, and the
+        // brush is never mutated afterwards, so one frozen instance is pixel-identical.
+        var fill = new LinearGradientBrush(Color.FromArgb(235, start.R, start.G, start.B), Color.FromArgb(125, end.R, end.G, end.B), 90);
+        fill.Freeze();
         for (var index = 0; index < count; index++)
         {
             var bar = new Rectangle
@@ -48,7 +61,7 @@ public partial class AudioVisualizerWindow : Window
                 RadiusY = 3,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 RenderTransform = new TranslateTransform(),
-                Fill = new LinearGradientBrush(Color.FromArgb(235, start.R, start.G, start.B), Color.FromArgb(125, end.R, end.G, end.B), 90)
+                Fill = fill
             };
             _bars.Add(bar);
             Bars.Items.Add(bar);

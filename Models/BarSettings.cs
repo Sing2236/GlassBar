@@ -73,4 +73,21 @@ public sealed class BarSettings
     public List<StickerConfig> Stickers { get; set; } = [];
     public List<StickerConfig> TopStickers { get; set; } = [];
     public List<PinnedAppConfig> PinnedApps { get; set; } = [];
+
+    // --- Theme system (v1) -------------------------------------------------
+    // A theme is mapped onto these existing look fields rather than a parallel
+    // state model. Every default below reproduces the shipped look exactly, so
+    // with the built-in Default active these are invisible; see ThemeService.
+    /// <summary>Name of the applied theme; "Default" is the built-in fallback.</summary>
+    public string ActiveTheme { get; set; } = "Default";
+    /// <summary>Comma-separated canonical widget order, or null for the built-in order.</summary>
+    public string? TopWidgetOrder { get; set; }
+    /// <summary>Widget value font size (overlay).</summary>
+    public double TopValueFontSize { get; set; } = 12;
+    /// <summary>Widget label font size (overlay).</summary>
+    public double TopLabelFontSize { get; set; } = 9;
+    /// <summary>Clock tile width (overlay, horizontal orientation).</summary>
+    public double TopClockWidth { get; set; } = 92;
+    /// <summary>Clock time format string (overlay).</summary>
+    public string TopClockFormat { get; set; } = "h:mm";
 }

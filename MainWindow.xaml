@@ -97,6 +97,34 @@
       </Style.Triggers>
     </Style>
 
+    <!-- One discovered theme in the Themes page: a full-width row that lists
+         the name and its author/version, left-aligned like a list entry and
+         marked Tag="Selected" when it is the active theme. -->
+    <Style x:Key="ThemeRowButton" TargetType="Button" BasedOn="{StaticResource ChoiceButton}">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Padding" Value="13,9" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Row" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="#20FFFFFF" /></Trigger>
+              <Trigger Property="Tag" Value="Selected">
+                <Setter TargetName="Row" Property="Background" Value="#257DD3FC" />
+                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                <Setter TargetName="Row" Property="BorderThickness" Value="3,1,1,1" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <!-- Option card used throughout the settings panel. -->
     <Style x:Key="SettingsCard" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource CardFill}" />
@@ -338,6 +366,8 @@
                     Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavOverlay" />
             <Button x:Name="SettingsNavAltTab" Style="{StaticResource SettingsNavButton}" Content="Alt-Tab"
                     Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavAltTab" />
+            <Button x:Name="SettingsNavThemes" Style="{StaticResource SettingsNavButton}" Content="Themes"
+                    Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavThemes" />
             <Button x:Name="SettingsNavPro" Style="{StaticResource SettingsNavButton}" Content="Pro"
                     Click="SettingsNav_Click" AutomationProperties.AutomationId="SettingsNavPro" />
           </StackPanel>
@@ -823,6 +853,20 @@
                     </Grid>
                   </StackPanel>
                 </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="SettingsPageThemes" Visibility="Collapsed">
+                <TextBlock Text="THEME" Style="{StaticResource SectionHeader}" />
+                <Rectangle Height="1" Fill="#1AFFFFFF" Margin="0,7,0,0" />
+                <TextBlock Text="A theme is a folder under %LOCALAPPDATA%\GlassBar\Themes holding a theme.ini. Choosing one restyles the bar; edits to the active theme are picked up without restarting."
+                           TextWrapping="Wrap" Foreground="{StaticResource MutedText}" FontSize="11" Margin="0,9,0,0" />
+                <StackPanel x:Name="ThemesListPanel" Margin="0,12,0,0" AutomationProperties.AutomationId="ThemesList" />
+                <TextBlock x:Name="ThemesStatusText" TextWrapping="Wrap" Foreground="{StaticResource MutedText}" FontSize="10"
+                           Margin="2,2,0,0" AutomationProperties.AutomationId="ThemesStatus" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                  <Button Style="{StaticResource ChoiceButton}" Content="Refresh" Click="RefreshThemes_Click" AutomationProperties.AutomationId="RefreshThemes" />
+                  <Button Style="{StaticResource ChoiceButton}" Content="Open themes folder" Click="OpenThemesFolder_Click" AutomationProperties.AutomationId="OpenThemesFolder" />
+                </StackPanel>
               </StackPanel>
 
               <StackPanel x:Name="SettingsPagePro" Visibility="Collapsed">
