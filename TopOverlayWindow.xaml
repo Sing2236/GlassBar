@@ -23,6 +23,18 @@
       <Setter Property="Foreground" Value="#F8FAFC" /><Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+
+    <!-- One pill for every widget, so the bar reads as a row of equal tiles
+         rather than plain text with two buttons dropped into it. Widths are
+         still set from code per orientation; this only supplies the chrome. -->
+    <Style x:Key="WidgetPill" TargetType="Border">
+      <Setter Property="Background" Value="#12FFFFFF" />
+      <Setter Property="BorderBrush" Value="#26FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
   </Window.Resources>
 
   <Border x:Name="TopSurface" Margin="4" CornerRadius="18"
@@ -35,21 +47,23 @@
       <StackPanel x:Name="TopWidgetsPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,6">
         <TextBlock x:Name="TopDragHandle" Text="&#xE76F;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="#68FFFFFF"
                    Width="20" VerticalAlignment="Center" TextAlignment="Center" ToolTip="Drag widget bar" Cursor="SizeAll" />
-        <StackPanel x:Name="ClockWidget" Width="92">
-          <TextBlock x:Name="TopClockText" Style="{StaticResource WidgetValue}" Text="9:41" />
-          <TextBlock x:Name="TopDateText" Style="{StaticResource WidgetLabel}" Text="MON, SEP 15" />
-        </StackPanel>
+        <Border x:Name="ClockWidget" Width="92" Style="{StaticResource WidgetPill}">
+          <StackPanel>
+            <TextBlock x:Name="TopClockText" Style="{StaticResource WidgetValue}" Text="9:41" />
+            <TextBlock x:Name="TopDateText" Style="{StaticResource WidgetLabel}" Text="MON, SEP 15" />
+          </StackPanel>
+        </Border>
         <StackPanel x:Name="PerformanceWidget" Orientation="Horizontal">
           <Border x:Name="PerformanceDivider" Style="{StaticResource WidgetDivider}" />
-          <StackPanel x:Name="PerformanceContent" Width="112"><TextBlock Style="{StaticResource WidgetLabel}" Text="SYSTEM · PRO" /><TextBlock x:Name="PerformanceText" Style="{StaticResource WidgetValue}" Text="CPU 0% · RAM 0%" /></StackPanel>
+          <Border x:Name="PerformanceContent" Width="130" Style="{StaticResource WidgetPill}"><StackPanel><TextBlock Style="{StaticResource WidgetLabel}" Text="SYSTEM · PRO" /><TextBlock x:Name="PerformanceText" Style="{StaticResource WidgetValue}" Text="CPU 0% · RAM 0%" /></StackPanel></Border>
         </StackPanel>
         <StackPanel x:Name="ConnectionWidget" Orientation="Horizontal">
           <Border x:Name="ConnectionDivider" Style="{StaticResource WidgetDivider}" />
-          <StackPanel x:Name="ConnectionContent" Width="86"><TextBlock Style="{StaticResource WidgetLabel}" Text="CONNECTION" /><StackPanel Orientation="Horizontal"><Ellipse x:Name="ConnectionDot" Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" Fill="#34D399" /><TextBlock x:Name="ConnectionText" Style="{StaticResource WidgetValue}" Text="Online" /></StackPanel></StackPanel>
+          <Border x:Name="ConnectionContent" Width="86" Style="{StaticResource WidgetPill}"><StackPanel><TextBlock Style="{StaticResource WidgetLabel}" Text="CONNECTION" /><StackPanel Orientation="Horizontal"><Ellipse x:Name="ConnectionDot" Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" Fill="#34D399" /><TextBlock x:Name="ConnectionText" Style="{StaticResource WidgetValue}" Text="Online" /></StackPanel></StackPanel></Border>
         </StackPanel>
         <StackPanel x:Name="PowerWidget" Orientation="Horizontal">
           <Border x:Name="PowerDivider" Style="{StaticResource WidgetDivider}" />
-          <StackPanel x:Name="PowerContent" Width="105"><TextBlock Style="{StaticResource WidgetLabel}" Text="POWER · PRO" /><TextBlock x:Name="PowerText" Style="{StaticResource WidgetValue}" Text="Desktop" TextTrimming="CharacterEllipsis" /></StackPanel>
+          <Border x:Name="PowerContent" Width="105" Style="{StaticResource WidgetPill}"><StackPanel><TextBlock Style="{StaticResource WidgetLabel}" Text="POWER · PRO" /><TextBlock x:Name="PowerText" Style="{StaticResource WidgetValue}" Text="Desktop" TextTrimming="CharacterEllipsis" /></StackPanel></Border>
         </StackPanel>
         <StackPanel x:Name="FocusWidget" Orientation="Horizontal">
           <Border x:Name="FocusDivider" Style="{StaticResource WidgetDivider}" />
@@ -66,10 +80,10 @@
         </StackPanel>
         <StackPanel x:Name="NewsWidget" Orientation="Horizontal">
           <Border x:Name="NewsDivider" Style="{StaticResource WidgetDivider}" />
-          <Button x:Name="NewsButton" Width="190" Height="34" Click="NewsButton_Click" Cursor="Hand" Background="Transparent" BorderThickness="0" ToolTip="Open headline">
+          <Button x:Name="NewsButton" Width="190" Height="38" Click="NewsButton_Click" Cursor="Hand" Background="#12FFFFFF" BorderThickness="0" ToolTip="Open headline">
             <Button.Template>
               <ControlTemplate TargetType="Button">
-                <Border x:Name="NewsSurface" CornerRadius="9" Background="{TemplateBinding Background}" Padding="4,2">
+                <Border x:Name="NewsSurface" CornerRadius="11" Background="{TemplateBinding Background}" BorderBrush="#26FFFFFF" BorderThickness="1" Padding="9,3">
                   <StackPanel><TextBlock Style="{StaticResource WidgetLabel}" Text="DAILY NEWS" /><TextBlock x:Name="NewsText" Text="Loading headline…" Style="{StaticResource WidgetValue}" FontSize="10" TextTrimming="CharacterEllipsis" /></StackPanel>
                 </Border>
                 <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NewsSurface" Property="Background" Value="#18FFFFFF" /></Trigger></ControlTemplate.Triggers>
