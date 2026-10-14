@@ -10,6 +10,38 @@ namespace GlassBar.Services;
 
 public sealed class WindowService
 {
+    /// <summary>
+    /// Per-window values that are effectively constant for the lifetime of a
+    /// window handle: the owning process identity and the icon. Only Title
+    /// and IsActive change from tick to tick, so re-deriving these every
+    /// second (a process open, up to three blocking cross-process
+    /// WM_GETICON sends, and a fresh BitmapSource) was pure waste.
+    /// </summary>
+    /// <param name="ProcessId">
+    /// The process that owned the handle when the entry was created. Window
+    /// handles are recycled by the OS, so a cached entry is only trusted when
+    /// the handle still maps to the same process and window class.
+    /// </param>
+    /// <param name="ClassName">
+    /// The window class name, used together with ProcessId to detect a
+    /// recycled handle without any cross-process call.
+    /// </param>
+    private sealed record WindowInfo(uint ProcessId, string ClassName, string ProcessName, string? ExecutablePath, ImageSource? Icon);
+
+    /// <summary>
+    /// Guards the cache below. Every caller so far is the WPF UI thread, but
+    /// the method is public, so keep concurrent enumerations safe.
+    /// </summary>
+    private readonly object _cacheGate = new();
+
+    /// <summary>
+    /// Keyed on the window handle, which is drawn from a small system-owned
+    /// set. Bounded by pruning every handle that was not seen in the current
+    /// enumeration (see GetOpenWindows), so it cannot grow as windows open
+    /// and close.
+    /// </summary>
+    private readonly Dictionary<nint, WindowInfo> _windowCache = [];
+
     public IReadOnlyList<BackgroundProcessItem> GetBackgroundProcesses()
     {
         var ownPid = Environment.ProcessId;
@@ -60,42 +92,83 @@ public sealed class WindowService
         var shell = NativeMethods.GetShellWindow();
         var foreground = NativeMethods.GetForegroundWindow();
         var ownPid = Environment.ProcessId;
+        // Handles that survived the current enumeration. Used to drop cache
+        // entries for windows that have gone away.
+        var seen = new HashSet<nint>();
+        var classBuffer = new StringBuilder(256);
 
-        NativeMethods.EnumWindows((handle, _) =>
+        lock (_cacheGate)
         {
-            if (handle == shell || !NativeMethods.IsWindowVisible(handle)) return true;
-            if ((NativeMethods.GetWindowLongPtr(handle, NativeMethods.GWL_EXSTYLE).ToInt64() & NativeMethods.WS_EX_TOOLWINDOW) != 0) return true;
-            if (NativeMethods.DwmGetWindowAttribute(handle, NativeMethods.DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
-
-            var length = NativeMethods.GetWindowTextLength(handle);
-            if (length == 0) return true;
-            var titleBuffer = new StringBuilder(length + 1);
-            NativeMethods.GetWindowText(handle, titleBuffer, titleBuffer.Capacity);
-
-            NativeMethods.GetWindowThreadProcessId(handle, out var pidValue);
-            if (pidValue == ownPid) return true;
-
-            try
+            NativeMethods.EnumWindows((handle, _) =>
             {
-                using var process = Process.GetProcessById((int)pidValue);
-                if (process.ProcessName.Equals("GlassBar", StringComparison.OrdinalIgnoreCase)) return true;
-                var executablePath = TryGetProcessPath(process.Id);
+                if (handle == shell || !NativeMethods.IsWindowVisible(handle)) return true;
+                if ((NativeMethods.GetWindowLongPtr(handle, NativeMethods.GWL_EXSTYLE).ToInt64() & NativeMethods.WS_EX_TOOLWINDOW) != 0) return true;
+                if (NativeMethods.DwmGetWindowAttribute(handle, NativeMethods.DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+
+                var length = NativeMethods.GetWindowTextLength(handle);
+                if (length == 0) return true;
+                var titleBuffer = new StringBuilder(length + 1);
+                NativeMethods.GetWindowText(handle, titleBuffer, titleBuffer.Capacity);
+
+                NativeMethods.GetWindowThreadProcessId(handle, out var pidValue);
+                if (pidValue == ownPid) return true;
+
+                seen.Add(handle);
+
+                // Reused across windows so the identity check stays
+                // allocation-free on the common (cache hit) path.
+                classBuffer.Clear();
+                NativeMethods.GetClassName(handle, classBuffer, classBuffer.Capacity);
+                var className = classBuffer.ToString();
+
+                if (!_windowCache.TryGetValue(handle, out var info) ||
+                    info.ProcessId != pidValue ||
+                    !string.Equals(info.ClassName, className, StringComparison.Ordinal))
+                {
+                    try
+                    {
+                        using var process = Process.GetProcessById((int)pidValue);
+                        if (process.ProcessName.Equals("GlassBar", StringComparison.OrdinalIgnoreCase)) return true;
+                        info = new WindowInfo(pidValue, className, process.ProcessName,
+                            TryGetProcessPath(process.Id), ExtractIcon(handle, process));
+                        _windowCache[handle] = info;
+                    }
+                    catch { return true; }
+                }
+
                 windows.Add(new AppItem
                 {
                     Handle = handle,
                     Title = titleBuffer.ToString(),
-                    ProcessName = process.ProcessName,
-                    ExecutablePath = executablePath,
-                    Icon = ExtractIcon(handle, process),
+                    ProcessName = info.ProcessName,
+                    ExecutablePath = info.ExecutablePath,
+                    Icon = info.Icon,
                     Preview = includePreviews ? CaptureWindowPreview(handle) : null,
                     IsActive = handle == foreground
                 });
-            }
-            catch { }
-            return true;
-        }, nint.Zero);
+                return true;
+            }, nint.Zero);
+
+            PruneWindowCache(seen);
+        }
 
         return windows;
+    }
+
+    /// <summary>
+    /// Drops cached window info for handles that were not part of the
+    /// enumeration just completed, so closed windows cannot accumulate.
+    /// </summary>
+    private void PruneWindowCache(HashSet<nint> seen)
+    {
+        if (_windowCache.Count == 0 || seen.Count == _windowCache.Count) return;
+
+        List<nint>? stale = null;
+        foreach (var handle in _windowCache.Keys)
+            if (!seen.Contains(handle)) (stale ??= []).Add(handle);
+
+        if (stale is null) return;
+        foreach (var handle in stale) _windowCache.Remove(handle);
     }
 
     public bool Activate(AppItem item)

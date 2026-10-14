@@ -23,10 +23,17 @@ public partial class MainWindow : Window
     private const int AppSearchHotkeyId = 0xB412;
     private const int WebSearchHotkeyId = 0xB413;
     private const int CombinedSearchHotkeyId = 0xB414;
+    // Fullscreen detection is driven by WinEvent hooks now; the interval timer
+    // is only a slow backstop for an event we somehow miss.
+    private static readonly TimeSpan FullscreenSafetyPollInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan FullscreenFallbackPollInterval = TimeSpan.FromMilliseconds(250);
+    // Collapses a burst of move/resize events into a single detector run.
+    private static readonly TimeSpan FullscreenEventCoalesceDelay = TimeSpan.FromMilliseconds(150);
     private readonly WindowService _windowService = new();
     private readonly SettingsService _settingsService = new();
     private readonly LicenseService _licenseService = new();
     private readonly CommunityDesignService _communityDesignService = new();
+    private readonly ThemeService _themeService;
     private readonly ObservableCollection<TaskbarIconGroup> _apps = [];
     private readonly NotificationBadgeService _notificationBadgeService = new();
     private readonly SystemMetricsService _metrics = new();
@@ -36,6 +43,12 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _taskbarGuardTimer;
     private readonly DispatcherTimer _fullscreenTimer;
+    private readonly DispatcherTimer _fullscreenCoalesceTimer;
+    // Held in a field, not a local, so the GC cannot collect the delegate while
+    // Windows still holds a pointer to it (that would crash the process).
+    private readonly NativeMethods.WinEventProc _winEventProc;
+    private nint _foregroundWinEventHook;
+    private nint _locationChangeWinEventHook;
     private readonly bool _keepVisibleForUiTests;
     // Selected category in the settings panel's left rail; matches the page
     // container names (SettingsPage*) and the rail buttons' Content.
@@ -52,6 +65,10 @@ public partial class MainWindow : Window
     // if its process no longer has multiple windows open.
     private TaskbarIconGroup? _expandedFanGroup;
     private int _appPage;
+    // Signature of everything the running-apps DataTemplate renders for the
+    // current page. PopulateAppPage skips its Clear()/Add() rebuild (which
+    // tears down and re-creates one container per app) when this is unchanged.
+    private string? _appPageSignature;
     private bool _pageAnimating;
     private StickerConfig? _selectedSticker;
     private StickerConfig? _selectedTopSticker;
@@ -70,6 +87,11 @@ public partial class MainWindow : Window
     public MainWindow(bool safeMode = false, bool keepVisibleForUiTests = false)
     {
         InitializeComponent();
+        // Themes marshal their debounced watcher callbacks onto this window's
+        // dispatcher; the INI is read once per settled edit, never per tick.
+        _themeService = new ThemeService(post: action => Dispatcher.BeginInvoke(action));
+        _themeService.ActiveThemeReloaded += OnActiveThemeReloaded;
+        _themeService.ThemesFolderChanged += (_, _) => RefreshThemesPageIfOpen();
         // Shown in the settings footer beside the update check.
         AboutVersionText.Text = $"GlassBar {UpdateService.CurrentVersion.ToString(3)}";
         _keepVisibleForUiTests = keepVisibleForUiTests;
@@ -102,16 +124,22 @@ public partial class MainWindow : Window
         };
         _taskbarGuardTimer.Start();
         _fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _fullscreenTimer.Tick += (_, _) =>
-        {
-            var handle = new WindowInteropHelper(this).Handle;
-            if (_searchPalette is { IsVisible: true } && handle != nint.Zero &&
-                FullscreenWindowDetector.IsForegroundFullscreen(handle))
-                _searchPalette.ClosePalette();
-            UpdateFullscreenVisibility();
-        };
+        _fullscreenTimer.Tick += (_, _) => CheckFullscreenState();
         _fullscreenTimer.Start();
+        // One-shot style timer: the WinEvent callback restarts it on every event,
+        // so it fires once the burst of moves/resizes has settled.
+        _fullscreenCoalesceTimer = new DispatcherTimer { Interval = FullscreenEventCoalesceDelay };
+        _fullscreenCoalesceTimer.Tick += (_, _) =>
+        {
+            _fullscreenCoalesceTimer.Stop();
+            CheckFullscreenState();
+        };
+        _winEventProc = OnWinEvent;
         RefreshBar();
+        // A file-defined theme is watched so edits reload live. With the built-in
+        // Default there is no file to watch and no theme folder is touched: this
+        // is a single name comparison, not filesystem or parse work.
+        _themeService.WatchActive(_settings.ActiveTheme);
         _initializing = false;
     }
 
@@ -138,6 +166,7 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(helper.Handle, EmergencyHotkeyId,
             NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_SHIFT, (uint)'T');
         RegisterConfiguredSearchHotkeys(helper.Handle);
+        RegisterFullscreenWinEventHooks();
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -145,6 +174,9 @@ public partial class MainWindow : Window
         _refreshTimer.Stop();
         _taskbarGuardTimer.Stop();
         _fullscreenTimer.Stop();
+        _fullscreenCoalesceTimer.Stop();
+        _themeService.Dispose();
+        UnregisterFullscreenWinEventHooks();
         _startMenu?.Close();
         _searchPalette?.Close();
         _topOverlay?.Close();
@@ -454,27 +486,32 @@ public partial class MainWindow : Window
 
     private void RefreshBar()
     {
+        // Assigning an identical value to a DependencyProperty still raises a
+        // change notification and invalidates measure/arrange, so only write
+        // these when the text/visibility actually changed. The clock changes
+        // once a minute and the date once a day, but this runs every second.
         var now = DateTime.Now;
-        ClockText.Text = now.ToString("h:mm");
-        DateText.Text = now.ToString("MMM d").ToUpperInvariant();
+        var clock = now.ToString("h:mm");
+        if (!string.Equals(ClockText.Text, clock, StringComparison.Ordinal)) ClockText.Text = clock;
+        var date = now.ToString("MMM d").ToUpperInvariant();
+        if (!string.Equals(DateText.Text, date, StringComparison.Ordinal)) DateText.Text = date;
 
         // Laptops show the battery percentage; desktops hide the element
         // entirely (no "Desktop" label, no blank gap).
         var power = _metrics.PowerLabel();
         if (string.Equals(power, "Desktop", StringComparison.Ordinal))
         {
-            BatteryText.Visibility = Visibility.Collapsed;
+            if (BatteryText.Visibility != Visibility.Collapsed) BatteryText.Visibility = Visibility.Collapsed;
         }
         else
         {
-            BatteryText.Text = power;
-            BatteryText.Visibility = Visibility.Visible;
+            if (!string.Equals(BatteryText.Text, power, StringComparison.Ordinal)) BatteryText.Text = power;
+            if (BatteryText.Visibility != Visibility.Visible) BatteryText.Visibility = Visibility.Visible;
         }
 
         _allApps = _windowService.GetOpenWindows();
         if (_settings.ShowNotificationBadges)
-            foreach (var app in _allApps)
-                app.NotificationCount = _notificationBadgeService.GetCount(app);
+            _notificationBadgeService.ApplyCounts(_allApps);
         _allGroups = BuildGroups(_allApps);
         if (!_pageAnimating) PopulateAppPage();
         SyncExpandedFanGroup();
@@ -536,10 +573,98 @@ public partial class MainWindow : Window
     {
         var pageCount = Math.Max(1, (int)Math.Ceiling(_allGroups.Count / (double)AppPageSize));
         _appPage = Math.Clamp(_appPage, 0, pageCount - 1);
+
+        var pagerVisibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+        if (AppPager.Visibility != pagerVisibility) AppPager.Visibility = pagerVisibility;
+        var pageLabel = $"{_appPage + 1}/{pageCount}";
+        if (!string.Equals(AppPageText.Text, pageLabel, StringComparison.Ordinal)) AppPageText.Text = pageLabel;
+
+        var page = _allGroups.Skip(_appPage * AppPageSize).Take(AppPageSize).ToList();
+
+        // _apps is bound to a non-virtualizing StackPanel, so Clear()+Add()
+        // tears down and re-instantiates one container per running app and
+        // re-runs the DataTemplate. This runs once a second forever, so skip
+        // it unless something the template actually renders changed. The
+        // groups are rebuilt from scratch each tick, so compare by value, not
+        // by reference. The signature covers exactly what the DataTemplate
+        // binds (title, active, stacked, badge count) plus the process name;
+        // it deliberately excludes icon identity, since icons for the same
+        // process are visually identical.
+        var signature = _appPage + "\u0001" + string.Join('\u0001', page.Select(g =>
+            $"{g.ProcessName}\u0002{g.Primary.Title}\u0002{g.IsActive}\u0002{g.IsStacked}\u0002{g.NotificationCount}"));
+        if (string.Equals(signature, _appPageSignature, StringComparison.Ordinal)) return;
+        _appPageSignature = signature;
+
         _apps.Clear();
-        foreach (var group in _allGroups.Skip(_appPage * AppPageSize).Take(AppPageSize)) _apps.Add(group);
-        AppPager.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-        AppPageText.Text = $"{_appPage + 1}/{pageCount}";
+        foreach (var group in page) _apps.Add(group);
+    }
+
+    // Installs the two WinEvent hooks that make fullscreen tracking event-driven.
+    // Registered with WINEVENT_OUTOFCONTEXT, so Windows posts the notifications to
+    // this window's UI thread, which is the thread that called SetWinEventHook.
+    private void RegisterFullscreenWinEventHooks()
+    {
+        _fullscreenTimer.Interval = FullscreenSafetyPollInterval;
+        _foregroundWinEventHook = NativeMethods.SetWinEventHook(
+            NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
+            nint.Zero, _winEventProc, 0, 0, NativeMethods.WINEVENT_OUTOFCONTEXT);
+        _locationChangeWinEventHook = NativeMethods.SetWinEventHook(
+            NativeMethods.EVENT_OBJECT_LOCATIONCHANGE, NativeMethods.EVENT_OBJECT_LOCATIONCHANGE,
+            nint.Zero, _winEventProc, 0, 0, NativeMethods.WINEVENT_OUTOFCONTEXT);
+
+        if (_foregroundWinEventHook != nint.Zero && _locationChangeWinEventHook != nint.Zero) return;
+
+        // Registration failed. Do not leave the user with only the slow backstop:
+        // unhook whatever did register and fall back to the original 250 ms poll
+        // so fullscreen hiding behaves exactly as it did before this change.
+        UnregisterFullscreenWinEventHooks();
+        _fullscreenTimer.Interval = FullscreenFallbackPollInterval;
+        Debug.WriteLine("GlassBar: fullscreen WinEvent hooks unavailable; using 250 ms polling.");
+    }
+
+    private void UnregisterFullscreenWinEventHooks()
+    {
+        if (_foregroundWinEventHook != nint.Zero)
+        {
+            NativeMethods.UnhookWinEvent(_foregroundWinEventHook);
+            _foregroundWinEventHook = nint.Zero;
+        }
+        if (_locationChangeWinEventHook != nint.Zero)
+        {
+            NativeMethods.UnhookWinEvent(_locationChangeWinEventHook);
+            _locationChangeWinEventHook = nint.Zero;
+        }
+    }
+
+    // Called on the UI thread by the message pump for each hooked event. It must
+    // stay cheap: it only arms the coalescing timer and never runs the detector,
+    // because EVENT_OBJECT_LOCATIONCHANGE fires for every move/resize step.
+    private void OnWinEvent(nint hook, uint eventType, nint hwnd, int idObject, int idChild,
+        uint eventThread, uint eventTime)
+    {
+        // Only whole-window changes can affect whether the foreground window is
+        // fullscreen; object-level notifications (carets, menus, and so on) are
+        // dropped without any further work.
+        if (idObject != NativeMethods.OBJID_WINDOW) return;
+        ScheduleFullscreenCheck();
+    }
+
+    private void ScheduleFullscreenCheck()
+    {
+        if (_keepVisibleForUiTests) return;
+        // Restarting collapses a burst of events into one check once the burst
+        // settles; the timer is a backstop if an event is ever missed entirely.
+        _fullscreenCoalesceTimer.Stop();
+        _fullscreenCoalesceTimer.Start();
+    }
+
+    private void CheckFullscreenState()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (_searchPalette is { IsVisible: true } && handle != nint.Zero &&
+            FullscreenWindowDetector.IsForegroundFullscreen(handle))
+            _searchPalette.ClosePalette();
+        UpdateFullscreenVisibility();
     }
 
     private void UpdateFullscreenVisibility()
@@ -1070,14 +1195,155 @@ public partial class MainWindow : Window
         SettingsPageAudio.Visibility = category == "Audio" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageOverlay.Visibility = category == "Overlay" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageAltTab.Visibility = category == "Alt-Tab" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPageThemes.Visibility = category == "Themes" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPagePro.Visibility = category == "Pro" ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (var (button, name) in new (Button, string)[]
                  {
                      (SettingsNavLook, "Look"), (SettingsNavEffects, "Effects"), (SettingsNavAudio, "Audio"),
-                     (SettingsNavOverlay, "Overlay"), (SettingsNavAltTab, "Alt-Tab"), (SettingsNavPro, "Pro")
+                     (SettingsNavOverlay, "Overlay"), (SettingsNavAltTab, "Alt-Tab"), (SettingsNavThemes, "Themes"),
+                     (SettingsNavPro, "Pro")
                  })
             button.Tag = name == category ? "Selected" : null;
+
+        // The theme list is rebuilt only when its page is shown (or after a
+        // debounced watcher event), never from a render or tick path.
+        if (category == "Themes") PopulateThemesPage();
+    }
+
+    // --- Themes ------------------------------------------------------------
+
+    private void RefreshThemes_Click(object sender, RoutedEventArgs e) => PopulateThemesPage();
+
+    private void OpenThemesFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(_themeService.ThemesRoot);
+            // Now that the folder exists, pick up new or edited themes while the page is open.
+            _themeService.EnsureWatcher();
+            Process.Start(new ProcessStartInfo(_themeService.ThemesRoot) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            ThemesStatusText.Text = $"Could not open the themes folder.\n{exception.Message}";
+        }
+    }
+
+    private void ThemeRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { CommandParameter: string name }) ApplyTheme(name);
+    }
+
+    /// <summary>
+    /// Resolves a theme by name and applies it, falling back to the built-in
+    /// Default (with a message) when it is missing or malformed. Never throws.
+    /// </summary>
+    private void ApplyTheme(string name)
+    {
+        var theme = _themeService.Resolve(name, out var error);
+        if (theme is null)
+        {
+            _themeService.SetStatus(error ?? $"Theme '{name}' could not be loaded.");
+            theme = _themeService.Resolve(ThemeService.DefaultThemeName, out _);
+        }
+        else
+        {
+            _themeService.SetStatus(null);
+        }
+
+        if (theme is not null) ApplyResolvedTheme(theme);
+        _themeService.WatchActive(_settings.ActiveTheme, theme?.SourcePath);
+        PopulateThemesPage();
+    }
+
+    /// <summary>
+    /// Maps a resolved theme onto BarSettings and lets the existing apply paths
+    /// redraw. A theme whose mapped values are unchanged does nothing at all.
+    /// </summary>
+    private void ApplyResolvedTheme(ResolvedTheme theme)
+    {
+        if (!_themeService.Apply(theme, _settings)) return;
+
+        var previous = _initializing;
+        _initializing = true;
+        ApplySettings();
+        _initializing = previous;
+        // ApplySettings drives the sliders, but their ValueChanged handlers stay
+        // quiet while _initializing, so the bar surface and height are refreshed
+        // here with the same two calls those handlers would have made.
+        ApplyBackgroundVisibility();
+        UpdateWindowHeight();
+        _topOverlay?.ApplyConfiguration(_settings);
+        SaveSettings();
+    }
+
+    private void OnActiveThemeReloaded(ResolvedTheme? theme, string? error)
+    {
+        if (theme is null)
+        {
+            // Keep the last good look instead of yanking the bar to Default while
+            // the file is mid-edit; the next successful save re-applies it.
+            _themeService.SetStatus(error);
+            RefreshThemesPageIfOpen();
+            return;
+        }
+        _themeService.SetStatus(null);
+        ApplyResolvedTheme(theme);
+        RefreshThemesPageIfOpen();
+    }
+
+    private void RefreshThemesPageIfOpen()
+    {
+        if (_settingsOpen && _settingsPage == "Themes") PopulateThemesPage();
+    }
+
+    private void PopulateThemesPage()
+    {
+        if (ThemesListPanel is null) return;
+        // Idempotent and event-driven: starts watching the folder (if it exists)
+        // so edits refresh this list, then does nothing until a file changes.
+        _themeService.EnsureWatcher();
+        var themes = _themeService.Discover();
+        ThemesListPanel.Children.Clear();
+        foreach (var theme in themes)
+        {
+            var row = new Button
+            {
+                Style = (Style)FindResource("ThemeRowButton"),
+                CommandParameter = theme.Name,
+                Content = ThemeRowContent(theme),
+                Tag = theme.Name.Equals(_settings.ActiveTheme, StringComparison.OrdinalIgnoreCase) ? "Selected" : null
+            };
+            row.Click += ThemeRow_Click;
+            ThemesListPanel.Children.Add(row);
+        }
+
+        var message = _themeService.StatusMessage;
+        ThemesStatusText.Text = !string.IsNullOrWhiteSpace(message)
+            ? message
+            : themes.Count == 1
+                ? "No themes yet. Add a folder under the themes folder, or use Refresh."
+                : $"{themes.Count} themes · active: {_settings.ActiveTheme}";
+    }
+
+    private StackPanel ThemeRowContent(Theme theme)
+    {
+        var row = new StackPanel();
+        row.Children.Add(new TextBlock { Text = theme.Name, FontWeight = FontWeights.SemiBold, FontSize = 12 });
+        var detail = theme.SourcePath is null
+            ? "Built-in · the shipped GlassBar look"
+            : string.IsNullOrWhiteSpace(theme.Author) ? "Unknown author" : theme.Author;
+        if (theme.SourcePath is not null && !string.IsNullOrWhiteSpace(theme.Version))
+            detail = $"{detail} · {theme.Version}";
+        row.Children.Add(new TextBlock
+        {
+            Text = detail,
+            Foreground = (Brush)FindResource("MutedText"),
+            FontSize = 10,
+            Margin = new Thickness(0, 2, 0, 0)
+        });
+        return row;
     }
 
     private void OpenStartMenu()

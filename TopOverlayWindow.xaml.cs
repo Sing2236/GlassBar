@@ -23,11 +23,42 @@ public partial class TopOverlayWindow : Window
     private DateTime _nextNewsRefresh = DateTime.MinValue;
     private string _newsLink = "https://www.bbc.com/news";
     private bool _applyingSize;
+    // Widget tiles in declaration order, and the order currently applied. Both
+    // are touched only by ApplyConfiguration (an apply/reload event), never by
+    // the per-second RefreshWidgets tick.
+    private readonly List<(string Canonical, FrameworkElement Element)> _widgetTiles = [];
+    private string _appliedWidgetOrder = BuiltInWidgetOrderValue;
+    private const string BuiltInWidgetOrderValue = "clock,performance,connection,power,focus,news";
+    // Validated once per apply, so the per-second RefreshWidgets never formats
+    // with a bad pattern and never needs a try/catch on its hot path.
+    private string _clockFormat = "h:mm";
+    // Font sizes currently written into the resources; guarded so an unchanged
+    // apply does not invalidate layout. Initialised to the XAML defaults.
+    private double _valueSize = 12;
+    private double _labelSize = 9;
+
+    // Frozen and cached: RefreshWidgets reassigns one of these every tick, and a frozen
+    // brush is pixel-identical to the fresh SolidColorBrush it replaces.
+    private static readonly SolidColorBrush OnlineDot = Frozen(Color.FromRgb(52, 211, 153));
+    private static readonly SolidColorBrush OfflineDot = Frozen(Color.FromRgb(251, 113, 133));
+
+    private static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
 
     public TopOverlayWindow(BarSettings settings)
     {
         InitializeComponent();
         _settings = settings;
+        _widgetTiles.Add(("clock", ClockWidget));
+        _widgetTiles.Add(("performance", PerformanceWidget));
+        _widgetTiles.Add(("connection", ConnectionWidget));
+        _widgetTiles.Add(("power", PowerWidget));
+        _widgetTiles.Add(("focus", FocusWidget));
+        _widgetTiles.Add(("news", NewsWidget));
         PerformanceText.FontSize = 11;
         FocusButton.Width = 108;
         FocusButton.Height = 29;
@@ -44,11 +75,80 @@ public partial class TopOverlayWindow : Window
         SizeChanged += (_, _) => RenderTopStickers();
         SizeChanged += OnUserResize;
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
+        // Hide() does not fire Unloaded, so without this the 1s timer keeps polling CPU,
+        // memory, network adapters and power state while the overlay is invisible
+        // (fullscreen mode). Refreshing on reveal only makes the first visible frame fresher.
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) { RefreshWidgets(); _timer.Start(); }
+            else _timer.Stop();
+        };
         RefreshWidgets();
         _timer.Start();
     }
 
     private bool IsVertical => _settings.TopBarOrientation.Equals("Vertical", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Clock tile width; the default (92) is the shipped horizontal width.</summary>
+    private double ClockTileWidth => Math.Clamp(_settings.TopClockWidth, 40, 400);
+
+    /// <summary>
+    /// Reorders the widget tiles to match the active theme. A no-op unless the
+    /// order actually changed, so Default (null order) leaves the built-in
+    /// layout untouched and repeated applies do not touch the visual tree.
+    /// </summary>
+    private void ApplyWidgetOrder()
+    {
+        var order = string.IsNullOrWhiteSpace(_settings.TopWidgetOrder) ? BuiltInWidgetOrderValue : _settings.TopWidgetOrder;
+        if (order.Equals(_appliedWidgetOrder, StringComparison.OrdinalIgnoreCase)) return;
+        _appliedWidgetOrder = order;
+
+        foreach (var (_, element) in _widgetTiles) TopWidgetsPanel.Children.Remove(element);
+        var insertAt = TopWidgetsPanel.Children.IndexOf(TopDragHandle) + 1;
+        foreach (var canonical in order.Split(','))
+        {
+            var tile = FindTile(canonical.Trim());
+            if (tile is null) continue;
+            TopWidgetsPanel.Children.Insert(insertAt++, tile);
+        }
+        // Any tile the order did not name keeps a slot at the end.
+        foreach (var (_, element) in _widgetTiles)
+            if (!TopWidgetsPanel.Children.Contains(element)) TopWidgetsPanel.Children.Add(element);
+    }
+
+    private FrameworkElement? FindTile(string canonical)
+    {
+        foreach (var (name, element) in _widgetTiles)
+            if (name.Equals(canonical, StringComparison.OrdinalIgnoreCase))
+                return element;
+        return null;
+    }
+
+    private static string ValidClockFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format) || format.Length > 32) return "h:mm";
+        try { _ = DateTime.Now.ToString(format); return format; }
+        catch (FormatException) { return "h:mm"; }
+    }
+
+    /// <summary>
+    /// Applies the theme's widget font sizes. Assigning an unchanged value to a
+    /// resource would still invalidate layout, so each write is guarded — the
+    /// same "do nothing when nothing changed" rule the refresh paths follow.
+    /// </summary>
+    private void ApplyTypography(BarSettings settings)
+    {
+        if (_valueSize != settings.TopValueFontSize)
+        {
+            _valueSize = settings.TopValueFontSize;
+            Resources["WidgetValueSize"] = settings.TopValueFontSize;
+        }
+        if (_labelSize != settings.TopLabelFontSize)
+        {
+            _labelSize = settings.TopLabelFontSize;
+            Resources["WidgetLabelSize"] = settings.TopLabelFontSize;
+        }
+    }
 
     private void OnClosed(object? sender, EventArgs e)
     {
@@ -90,7 +190,11 @@ public partial class TopOverlayWindow : Window
     public void ApplyConfiguration(BarSettings settings, bool fitToWidgets = true)
     {
         ApplyAppearance(settings);
-        ClockWidget.Visibility = settings.TopShowClock ? Visibility.Visible : Visibility.Collapsed;
+        // Typography and tile order come from the active theme; both are cheap
+        // resource/children writes on an apply, and neither allocates per frame.
+        ApplyTypography(settings);
+        _clockFormat = ValidClockFormat(settings.TopClockFormat);
+        ApplyWidgetOrder();        ClockWidget.Visibility = settings.TopShowClock ? Visibility.Visible : Visibility.Collapsed;
         PerformanceWidget.Visibility = settings.TopShowPerformance ? Visibility.Visible : Visibility.Collapsed;
         ConnectionWidget.Visibility = settings.TopShowConnection ? Visibility.Visible : Visibility.Collapsed;
         PowerWidget.Visibility = settings.TopShowPower ? Visibility.Visible : Visibility.Collapsed;
@@ -108,7 +212,7 @@ public partial class TopOverlayWindow : Window
         TopWidgetsPanel.Orientation = IsVertical ? Orientation.Vertical : Orientation.Horizontal;
         TopDragHandle.Width = IsVertical ? 150 : 20;
         TopDragHandle.Height = IsVertical ? 18 : double.NaN;
-        ClockWidget.Width = IsVertical ? 160 : 92;
+        ClockWidget.Width = IsVertical ? 160 : ClockTileWidth;
 
         SetWidgetLayout(PerformanceWidget, PerformanceDivider, PerformanceContent, 130);
         SetWidgetLayout(ConnectionWidget, ConnectionDivider, ConnectionContent, 86);
@@ -151,7 +255,7 @@ public partial class TopOverlayWindow : Window
     private double CalculateWidgetWidth()
     {
         var width = 48d;
-        if (ClockWidget.Visibility == Visibility.Visible) width += 92;
+        if (ClockWidget.Visibility == Visibility.Visible) width += ClockTileWidth;
         if (PerformanceWidget.Visibility == Visibility.Visible) width += 150;
         if (ConnectionWidget.Visibility == Visibility.Visible) width += 106;
         if (PowerWidget.Visibility == Visibility.Visible) width += 125;
@@ -226,13 +330,11 @@ public partial class TopOverlayWindow : Window
     private void RefreshWidgets()
     {
         var now = DateTime.Now;
-        TopClockText.Text = now.ToString("h:mm");
+        TopClockText.Text = now.ToString(_clockFormat);
         TopDateText.Text = now.ToString("ddd, MMM d").ToUpperInvariant();
         PerformanceText.Text = $"CPU {_metrics.CpuPercent()}% · RAM {_metrics.MemoryPercent()}%";
         ConnectionText.Text = _metrics.ConnectionLabel();
-        ConnectionDot.Fill = ConnectionText.Text == "Offline"
-            ? new SolidColorBrush(Color.FromRgb(251, 113, 133))
-            : new SolidColorBrush(Color.FromRgb(52, 211, 153));
+        ConnectionDot.Fill = ConnectionText.Text == "Offline" ? OfflineDot : OnlineDot;
         PowerText.Text = _metrics.PowerLabel();
 
         if (_focusEndsAt is null) return;

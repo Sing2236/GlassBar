@@ -1,0 +1,25 @@
+NOTICE
+======
+
+GlassBar theme system
+---------------------
+
+GlassBar's file-defined theme system is *inspired by* the skin architecture of
+Rainmeter (a desktop customization tool) in the general sense that a theme is a
+folder containing a plain-text definition plus its own assets, with inherited
+and variable-substituted values.
+
+It is an INDEPENDENT IMPLEMENTATION written for GlassBar. No Rainmeter source
+code, plugin headers, bundled skins, skin files, INI files, or documentation
+text were copied, adapted, or consulted as a source of implementation.
+
+Rainmeter is licensed under the GNU General Public License v2.0 (GPL-2.0).
+GlassBar is not GPL-licensed and is not derived from Rainmeter; this theme
+system shares no code or assets with it. The names, file layout and behaviour
+here are GlassBar's own design, chosen to fit GlassBar's existing settings
+model.
+
+The theme model deliberately stops at restyling the widgets GlassBar already
+ships: colours, geometry, typography, opacity, and which widgets are shown and
+in what order. It contains no expression, measure or meter language, and no
+plugin or extension mechanism.

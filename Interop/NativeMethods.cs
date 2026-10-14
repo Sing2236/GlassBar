@@ -53,9 +53,16 @@ internal static class NativeMethods
     internal const uint PW_RENDERFULLCONTENT = 0x00000002;
     internal const uint SRCCOPY = 0x00CC0020;
     internal const uint CAPTUREBLT = 0x40000000;
+    internal const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    internal const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+    internal const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+    internal const int OBJID_WINDOW = 0;
+    internal const int SM_CMONITORS = 80;
 
     internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
     internal delegate nint LowLevelKeyboardProc(int code, nint wParam, nint lParam);
+    internal delegate void WinEventProc(nint hook, uint eventType, nint hWnd, int idObject, int idChild,
+        uint eventThread, uint eventTime);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -64,6 +71,20 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool IsWindowVisible(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool IsWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern int GetSystemMetrics(int index);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern nint SetWinEventHook(uint eventMin, uint eventMax, nint eventHookModule,
+        WinEventProc callback, uint processId, uint threadId, uint flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool UnhookWinEvent(nint hook);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern int GetWindowText(nint hWnd, StringBuilder text, int count);

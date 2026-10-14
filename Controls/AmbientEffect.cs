@@ -15,6 +15,18 @@ public sealed class AmbientEffect : FrameworkElement
     private string _particleMode = "";
     private Color _accent = Color.FromRgb(125, 211, 252);
 
+    // Frozen Freezable caches. Every brush/pen below is keyed on the exact value it is
+    // built from (full ARGB, never a rounded or quantised alpha) so the cached instance
+    // is pixel-identical to a freshly allocated one. The solid/linear/glow key spaces are
+    // naturally bounded (a few hundred colours, alpha 0..255); the pen cache is keyed on a
+    // continuous thickness, so it is capped and simply stops caching once full - a miss
+    // still returns a frozen pen, so behaviour is unchanged.
+    private static readonly Dictionary<Color, SolidColorBrush> _solidCache = [];
+    private static readonly Dictionary<(Color From, Color To, double Angle), LinearGradientBrush> _linearCache = [];
+    private static readonly Dictionary<(Brush Brush, double Thickness), Pen> _penCache = [];
+    private static readonly Dictionary<(Color Color, byte Alpha), RadialGradientBrush> _glowCache = [];
+    private const int PenCacheLimit = 1024;
+
     public string Mode
     {
         get => _mode;
@@ -57,6 +69,12 @@ public sealed class AmbientEffect : FrameworkElement
 
     private void OnRendering(object? sender, EventArgs e)
     {
+        // Nothing to draw: Off renders no pixels at all (see OnRender) and a control that is
+        // not visible cannot. Skipping here also skips the InvalidateVisual below, which is
+        // what makes CompositionTarget.Rendering fire again - so this stops the 60fps
+        // self-sustaining redraw loop instead of merely drawing nothing into it.
+        if (_mode == "Off" || !IsVisible) return;
+
         var now = DateTime.UtcNow;
         var elapsed = Math.Min(0.05, (now - _lastFrame).TotalSeconds);
         _lastFrame = now;
@@ -152,13 +170,63 @@ public sealed class AmbientEffect : FrameworkElement
         Wrap(particle);
     }
 
+    private static SolidColorBrush Solid(Color color)
+    {
+        if (!_solidCache.TryGetValue(color, out var brush))
+        {
+            brush = new SolidColorBrush(color);
+            brush.Freeze();
+            _solidCache[color] = brush;
+        }
+        return brush;
+    }
+
+    private static LinearGradientBrush Linear(Color from, Color to, double angle)
+    {
+        if (!_linearCache.TryGetValue((from, to, angle), out var brush))
+        {
+            brush = new LinearGradientBrush(from, to, angle);
+            brush.Freeze();
+            _linearCache[(from, to, angle)] = brush;
+        }
+        return brush;
+    }
+
+    private static Pen LinePen(Brush brush, double thickness)
+    {
+        if (!_penCache.TryGetValue((brush, thickness), out var pen))
+        {
+            pen = new Pen(brush, thickness) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            pen.Freeze();
+            if (_penCache.Count < PenCacheLimit) _penCache[(brush, thickness)] = pen;
+        }
+        return pen;
+    }
+
+    private static RadialGradientBrush Glow(Color color, byte alpha)
+    {
+        if (!_glowCache.TryGetValue((color, alpha), out var brush))
+        {
+            var stops = new GradientStopCollection
+            {
+                new(Color.FromArgb(alpha, color.R, color.G, color.B), 0),
+                new(Color.FromArgb(0, color.R, color.G, color.B), 1)
+            };
+            stops.Freeze();
+            brush = new RadialGradientBrush { GradientStops = stops };
+            brush.Freeze();
+            _glowCache[(color, alpha)] = brush;
+        }
+        return brush;
+    }
+
     private void DrawRain(DrawingContext dc)
     {
         foreach (var particle in _particles)
         {
             var alpha = (byte)(38 + 92 * particle.Opacity * Intensity);
-            var brush = new LinearGradientBrush(Color.FromArgb(8, 255, 255, 255), Color.FromArgb(alpha, 210, 242, 255), 90);
-            var pen = new Pen(brush, particle.Size) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            var brush = Linear(Color.FromArgb(8, 255, 255, 255), Color.FromArgb(alpha, 210, 242, 255), 90);
+            var pen = LinePen(brush, particle.Size);
             dc.DrawLine(pen, new Point(particle.X - 2, particle.Y - particle.Length), new Point(particle.X, particle.Y));
         }
     }
@@ -185,7 +253,7 @@ public sealed class AmbientEffect : FrameworkElement
         foreach (var particle in _particles)
         {
             var alpha = (byte)(45 + 120 * particle.Opacity * Intensity);
-            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(alpha, 235, 249, 255)), null,
+            dc.DrawEllipse(Solid(Color.FromArgb(alpha, 235, 249, 255)), null,
                 new Point(particle.X, particle.Y), particle.Size * 1.35, particle.Size * 1.35);
         }
     }
@@ -197,7 +265,7 @@ public sealed class AmbientEffect : FrameworkElement
             var shimmer = 0.45 + 0.55 * Math.Abs(Math.Sin(particle.Phase * 1.7));
             var color = particle.Variant ? _accent : Color.FromRgb(253, 224, 71);
             DrawGlow(dc, new Point(particle.X, particle.Y), color, 8 + particle.Size * 4, shimmer * 0.62);
-            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb((byte)(185 * shimmer * Intensity), color.R, color.G, color.B)),
+            dc.DrawEllipse(Solid(Color.FromArgb((byte)(185 * shimmer * Intensity), color.R, color.G, color.B)),
                 null, new Point(particle.X, particle.Y), particle.Size, particle.Size);
         }
     }
@@ -213,7 +281,7 @@ public sealed class AmbientEffect : FrameworkElement
             if (CustomEffect.Shape != "Line" && CustomEffect.Glow > 0.05)
                 DrawGlow(dc, new Point(particle.X, particle.Y), color, size * (1.8 + 2.5 * CustomEffect.Glow), CustomEffect.Glow * .5);
 
-            var brush = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+            var brush = Solid(Color.FromArgb(alpha, color.R, color.G, color.B));
             switch (CustomEffect.Shape)
             {
                 case "Line":
@@ -221,24 +289,23 @@ public sealed class AmbientEffect : FrameworkElement
                     var lineStart = new Point(particle.X - lineTrail * .17, particle.Y - lineTrail);
                     var lineEnd = new Point(particle.X, particle.Y);
                     var glowAlpha = (byte)Math.Clamp(95 * CustomEffect.Glow * Intensity, 0, 255);
-                    var glowPen = new Pen(new SolidColorBrush(Color.FromArgb(glowAlpha, second.R, second.G, second.B)),
-                        Math.Max(1.8, size * .95)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    var glowPen = LinePen(Solid(Color.FromArgb(glowAlpha, second.R, second.G, second.B)),
+                        Math.Max(1.8, size * .95));
                     dc.DrawLine(glowPen, lineStart, lineEnd);
-                    var lineBrush = new LinearGradientBrush(
+                    var lineBrush = Linear(
                         Color.FromArgb(5, _accent.R, _accent.G, _accent.B),
                         Color.FromArgb(alpha, _accent.R, _accent.G, _accent.B), 90);
-                    var linePen = new Pen(lineBrush, Math.Max(1.2, size * .62))
-                        { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    var linePen = LinePen(lineBrush, Math.Max(1.2, size * .62));
                     dc.DrawLine(linePen, lineStart, lineEnd);
                     break;
                 case "Spark":
-                    var sparkPen = new Pen(brush, Math.Max(0.8, size * .22)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    var sparkPen = LinePen(brush, Math.Max(0.8, size * .22));
                     dc.DrawLine(sparkPen, new Point(particle.X - size, particle.Y), new Point(particle.X + size, particle.Y));
                     dc.DrawLine(sparkPen, new Point(particle.X, particle.Y - size), new Point(particle.X, particle.Y + size));
                     break;
                 case "Drop":
                     var trail = size * (1.2 + 4 * CustomEffect.Trail);
-                    var dropPen = new Pen(brush, Math.Max(0.8, size * .24)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    var dropPen = LinePen(brush, Math.Max(0.8, size * .24));
                     dc.DrawLine(dropPen, new Point(particle.X, particle.Y - trail), new Point(particle.X, particle.Y));
                     break;
                 case "Diamond":
@@ -263,15 +330,7 @@ public sealed class AmbientEffect : FrameworkElement
     private void DrawGlow(DrawingContext dc, Point center, Color color, double radius, double opacity)
     {
         var alpha = (byte)Math.Clamp(80 * Intensity * opacity, 0, 255);
-        var brush = new RadialGradientBrush
-        {
-            GradientStops = new GradientStopCollection
-            {
-                new(Color.FromArgb(alpha, color.R, color.G, color.B), 0),
-                new(Color.FromArgb(0, color.R, color.G, color.B), 1)
-            }
-        };
-        dc.DrawEllipse(brush, null, center, radius, radius * .42);
+        dc.DrawEllipse(Glow(color, alpha), null, center, radius, radius * .42);
     }
 
     private Particle NewParticle(bool initial) => new()

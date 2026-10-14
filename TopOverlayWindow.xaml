@@ -2,12 +2,17 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:GlassBar.Controls"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="GlassBar widgets" Width="620" Height="54" MinWidth="150" MinHeight="46"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResizeWithGrip" ShowInTaskbar="False" ShowActivated="False" Topmost="True"
         FontFamily="{StaticResource UiFont}" Foreground="#F8FAFC"
         AutomationProperties.AutomationId="TopOverlayWindow">
   <Window.Resources>
+    <!-- Widget typography defaults, overridden per theme at apply time. These
+         are the shipped sizes, so with the Default theme nothing changes. -->
+    <sys:Double x:Key="WidgetValueSize">12</sys:Double>
+    <sys:Double x:Key="WidgetLabelSize">9</sys:Double>
     <SolidColorBrush x:Key="TopGlassBackground" Color="#111722" Opacity="0.82" />
     <SolidColorBrush x:Key="TopAccent" Color="#7DD3FC" />
     <Style x:Key="WidgetDivider" TargetType="Border">
@@ -16,11 +21,11 @@
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style x:Key="WidgetLabel" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#9FB0C5" /><Setter Property="FontSize" Value="9" />
+      <Setter Property="Foreground" Value="#9FB0C5" /><Setter Property="FontSize" Value="{DynamicResource WidgetLabelSize}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style x:Key="WidgetValue" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#F8FAFC" /><Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#F8FAFC" /><Setter Property="FontSize" Value="{DynamicResource WidgetValueSize}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
