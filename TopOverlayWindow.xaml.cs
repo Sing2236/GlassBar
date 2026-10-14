@@ -110,7 +110,7 @@ public partial class TopOverlayWindow : Window
         TopDragHandle.Height = IsVertical ? 18 : double.NaN;
         ClockWidget.Width = IsVertical ? 160 : 92;
 
-        SetWidgetLayout(PerformanceWidget, PerformanceDivider, PerformanceContent, 112);
+        SetWidgetLayout(PerformanceWidget, PerformanceDivider, PerformanceContent, 130);
         SetWidgetLayout(ConnectionWidget, ConnectionDivider, ConnectionContent, 86);
         SetWidgetLayout(PowerWidget, PowerDivider, PowerContent, 105);
         SetWidgetLayout(FocusWidget, FocusDivider, null, 112);
@@ -152,7 +152,7 @@ public partial class TopOverlayWindow : Window
     {
         var width = 48d;
         if (ClockWidget.Visibility == Visibility.Visible) width += 92;
-        if (PerformanceWidget.Visibility == Visibility.Visible) width += 132;
+        if (PerformanceWidget.Visibility == Visibility.Visible) width += 150;
         if (ConnectionWidget.Visibility == Visibility.Visible) width += 106;
         if (PowerWidget.Visibility == Visibility.Visible) width += 125;
         if (FocusWidget.Visibility == Visibility.Visible) width += 131;
@@ -163,12 +163,15 @@ public partial class TopOverlayWindow : Window
     private double CalculateWidgetHeight()
     {
         var height = 52d;
-        if (ClockWidget.Visibility == Visibility.Visible) height += 38;
-        if (PerformanceWidget.Visibility == Visibility.Visible) height += 49;
-        if (ConnectionWidget.Visibility == Visibility.Visible) height += 49;
-        if (PowerWidget.Visibility == Visibility.Visible) height += 49;
+        // Each widget is 6px taller than it was: the pill chrome adds 1px of border
+        // and 3px of padding top and bottom. Vertical mode stacks them, so the
+        // estimate has to grow with them or the window comes up short and clips.
+        if (ClockWidget.Visibility == Visibility.Visible) height += 44;
+        if (PerformanceWidget.Visibility == Visibility.Visible) height += 55;
+        if (ConnectionWidget.Visibility == Visibility.Visible) height += 55;
+        if (PowerWidget.Visibility == Visibility.Visible) height += 55;
         if (FocusWidget.Visibility == Visibility.Visible) height += 49;
-        if (NewsWidget.Visibility == Visibility.Visible) height += 54;
+        if (NewsWidget.Visibility == Visibility.Visible) height += 58;
         return height;
     }
 
