@@ -27,9 +27,21 @@ namespace GlassBar.Services;
 /// </summary>
 public sealed class NotificationBadgeService
 {
+    // The notification list is fetched on a background continuation and scored
+    // from a cached snapshot. The previous implementation did the WinRT fetch
+    // with GetAwaiter().GetResult() on the WPF UI thread once per second, which
+    // is a blocking cross-process call into the notification service: on
+    // machines where that service is slow to answer (or holds a long list of
+    // toasts) the whole bar froze for roughly a second per refresh, which is
+    // exactly the "freezes every couple of seconds" symptom on slower devices.
+    private static readonly TimeSpan SnapshotLifetime = TimeSpan.FromSeconds(5);
+
     private UserNotificationListener? _listener;
     private bool _accessRequested;
     private bool _accessGranted;
+    private string[] _displayNames = [];
+    private DateTime _snapshotAt = DateTime.MinValue;
+    private int _fetching;
 
     /// <summary>
     /// Fire-and-forget. Safe to call multiple times or before the listener
@@ -69,27 +81,17 @@ public sealed class NotificationBadgeService
     public int GetCount(AppItem app)
     {
         if (!_accessGranted || _listener is null) return 0;
-
-        try
-        {
-            var notifications = _listener.GetNotificationsAsync(Windows.UI.Notifications.NotificationKinds.Toast)
-                .AsTask().GetAwaiter().GetResult();
-
-            return notifications.Count(notification => Matches(notification, app.ProcessName, app.Title));
-        }
-        catch
-        {
-            return 0;
-        }
+        RefreshSnapshotIfStale();
+        return _displayNames.Count(displayName => MatchesName(displayName, app.ProcessName, app.Title));
     }
 
     /// <summary>
-    /// Sets every app's NotificationCount from a single notification snapshot.
-    /// GetCount above does the same blocking WinRT fetch, but once per app;
-    /// calling it in a loop over the open windows repeats an identical query
-    /// for every app in the same tick. This fetches the list once and scores
-    /// every app against that one snapshot, using the exact same match
-    /// predicate, so which app gets which count is unchanged.
+    /// Sets every app's NotificationCount from the cached notification
+    /// snapshot. This never blocks: it scores the current snapshot (a plain
+    /// string array) and, if that snapshot is old, starts a background
+    /// refresh that lands on a later tick. The previous version made the
+    /// blocking WinRT fetch inline here, on the UI thread, every second --
+    /// see the comment on SnapshotLifetime.
     ///
     /// As with GetCount, counts are left at 0 when access hasn't been granted
     /// (or the listener isn't ready), and on any failure -- the caller's
@@ -100,24 +102,56 @@ public sealed class NotificationBadgeService
         if (!_accessGranted || _listener is null) return;
         if (apps.Count == 0) return;
 
-        IReadOnlyList<UserNotification> notifications;
+        RefreshSnapshotIfStale();
+        var displayNames = _displayNames;
+        if (displayNames.Length == 0) return;
+
+        foreach (var app in apps)
+            app.NotificationCount = displayNames.Count(name => MatchesName(name, app.ProcessName, app.Title));
+    }
+
+    private void RefreshSnapshotIfStale()
+    {
+        if (_listener is null) return;
+        if (DateTime.UtcNow - _snapshotAt < SnapshotLifetime) return;
+        if (Interlocked.Exchange(ref _fetching, 1) != 0) return;
+        _ = RefreshSnapshotAsync();
+    }
+
+    /// <summary>
+    /// Fire-and-forget. Awaits the WinRT call instead of blocking a thread,
+    /// then publishes the display names as one immutable array so a reader
+    /// on the UI thread never observes a half-built list.
+    /// </summary>
+    private async Task RefreshSnapshotAsync()
+    {
         try
         {
-            notifications = _listener.GetNotificationsAsync(Windows.UI.Notifications.NotificationKinds.Toast)
-                .AsTask().GetAwaiter().GetResult();
+            var listener = _listener;
+            if (listener is null) return;
+            var notifications = await listener
+                .GetNotificationsAsync(Windows.UI.Notifications.NotificationKinds.Toast).AsTask();
+            _displayNames = notifications
+                .Select(notification => notification.AppInfo?.DisplayInfo?.DisplayName)
+                .Where(displayName => !string.IsNullOrWhiteSpace(displayName))
+                .Select(displayName => displayName!)
+                .ToArray();
+            _snapshotAt = DateTime.UtcNow;
         }
         catch
         {
-            return;
+            // Back off instead of retrying on every tick, but do retry: a
+            // transient failure should not disable badges until restart.
+            _snapshotAt = DateTime.UtcNow - SnapshotLifetime + TimeSpan.FromSeconds(20);
         }
-
-        foreach (var app in apps)
-            app.NotificationCount = notifications.Count(notification => Matches(notification, app.ProcessName, app.Title));
+        finally
+        {
+            Interlocked.Exchange(ref _fetching, 0);
+        }
     }
 
-    private static bool Matches(UserNotification notification, string processName, string title)
+    private static bool MatchesName(string? displayName, string processName, string title)
     {
-        var displayName = notification.AppInfo?.DisplayInfo?.DisplayName;
         if (string.IsNullOrWhiteSpace(displayName)) return false;
         return displayName.Contains(processName, StringComparison.OrdinalIgnoreCase) ||
                processName.Contains(displayName, StringComparison.OrdinalIgnoreCase) ||

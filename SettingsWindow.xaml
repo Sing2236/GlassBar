@@ -1,0 +1,35 @@
+<Window x:Class="GlassBar.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GlassBar Settings"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        WindowStartupLocation="Manual" UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="{StaticResource UiFont}" Foreground="#F8FAFC"
+        KeyDown="Window_KeyDown" Closed="Window_Closed"
+        AutomationProperties.AutomationId="GlassBarSettingsWindow">
+  <Window.Resources>
+    <!-- The settings panel lives inside MainWindow's tree (its handlers are
+         there), so any DynamicResource it uses has to resolve here once the
+         panel is reparented into this window. Keep in sync with
+         MainWindow.ApplyAccentBrush. -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#7DD3FC" />
+  </Window.Resources>
+
+  <Grid x:Name="Root">
+    <Border x:Name="Backdrop" Background="#73000000"
+            MouseLeftButtonDown="Backdrop_MouseLeftButtonDown" />
+
+    <ContentControl x:Name="PanelHost"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    RenderTransformOrigin="0.5,0.5">
+      <ContentControl.RenderTransform>
+        <TransformGroup>
+          <ScaleTransform x:Name="HostScale" ScaleX="1" ScaleY="1" />
+          <TranslateTransform x:Name="HostTranslate" />
+        </TransformGroup>
+      </ContentControl.RenderTransform>
+    </ContentControl>
+  </Grid>
+</Window>

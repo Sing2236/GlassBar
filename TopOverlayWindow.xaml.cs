@@ -36,6 +36,10 @@ public partial class TopOverlayWindow : Window
     // apply does not invalidate layout. Initialised to the XAML defaults.
     private double _valueSize = 12;
     private double _labelSize = 9;
+    // Built sticker frames and the file list they were built from, so an apply
+    // that did not change the sticker set can update them without re-decoding.
+    private readonly List<(StickerConfig Config, Border Frame)> _topStickerFrames = [];
+    private string _topStickerSignature = "";
 
     // Frozen and cached: RefreshWidgets reassigns one of these every tick, and a frozen
     // brush is pixel-identical to the fresh SolidColorBrush it replaces.
@@ -71,8 +75,13 @@ public partial class TopOverlayWindow : Window
             if (DateTime.UtcNow >= _nextNewsRefresh) await RefreshNewsAsync();
         };
         Closed += OnClosed;
-        Loaded += async (_, _) => { PositionWindow(); RenderTopStickers(); await RefreshNewsAsync(); };
-        SizeChanged += (_, _) => RenderTopStickers();
+        // ApplyConfiguration already built the sticker frames; on load the canvas
+        // finally has a real size, so they only need their anchors updated.
+        Loaded += async (_, _) => { PositionWindow(); PositionTopStickers(); await RefreshNewsAsync(); };
+        // A resize only changes where the existing stickers sit. Rebuilding the
+        // canvas here would re-decode every GIF on each drag step (and clear the
+        // stickers outright, since a bare RenderTopStickers() has no list).
+        SizeChanged += (_, _) => PositionTopStickers();
         SizeChanged += OnUserResize;
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
         // Hide() does not fire Unloaded, so without this the 1s timer keeps polling CPU,
@@ -184,7 +193,8 @@ public partial class TopOverlayWindow : Window
         TopEffectsLayer.CustomEffect = settings.CustomEffect;
         if (ColorConverter.ConvertFromString(settings.Accent) is Color effectAccent)
             TopEffectsLayer.Accent = effectAccent;
-        if (IsLoaded) RenderTopStickers(settings.TopStickers);
+        // Stickers do not depend on appearance. ApplyConfiguration renders them
+        // once at its end; doing it here too decoded every GIF twice per apply.
     }
 
     public void ApplyConfiguration(BarSettings settings, bool fitToWidgets = true)
@@ -330,12 +340,20 @@ public partial class TopOverlayWindow : Window
     private void RefreshWidgets()
     {
         var now = DateTime.Now;
-        TopClockText.Text = now.ToString(_clockFormat);
-        TopDateText.Text = now.ToString("ddd, MMM d").ToUpperInvariant();
-        PerformanceText.Text = $"CPU {_metrics.CpuPercent()}% · RAM {_metrics.MemoryPercent()}%";
-        ConnectionText.Text = _metrics.ConnectionLabel();
-        ConnectionDot.Fill = ConnectionText.Text == "Offline" ? OfflineDot : OnlineDot;
-        PowerText.Text = _metrics.PowerLabel();
+        // A DispatcherTimer tick is the only caller, but the clock changes once a
+        // minute and the date once a day. Assigning an identical value to a
+        // DependencyProperty still raises a change notification, so only write
+        // the ones that actually changed - same rule the main bar follows.
+        SetText(TopClockText, now.ToString(_clockFormat));
+        SetText(TopDateText, now.ToString("ddd, MMM d").ToUpperInvariant());
+        SetText(PerformanceText, $"CPU {_metrics.CpuPercent()}% · RAM {_metrics.MemoryPercent()}%");
+
+        var connection = _metrics.ConnectionLabel();
+        SetText(ConnectionText, connection);
+        var dot = connection == "Offline" ? OfflineDot : OnlineDot;
+        if (!ReferenceEquals(ConnectionDot.Fill, dot)) ConnectionDot.Fill = dot;
+
+        SetText(PowerText, _metrics.PowerLabel());
 
         if (_focusEndsAt is null) return;
         var remaining = _focusEndsAt.Value - now;
@@ -346,6 +364,11 @@ public partial class TopOverlayWindow : Window
             return;
         }
         SetFocusLabel($"Focus {remaining.Minutes:00}:{remaining.Seconds:00}");
+    }
+
+    private static void SetText(System.Windows.Controls.TextBlock target, string value)
+    {
+        if (!string.Equals(target.Text, value, StringComparison.Ordinal)) target.Text = value;
     }
 
     private async Task RefreshNewsAsync()
@@ -401,8 +424,22 @@ public partial class TopOverlayWindow : Window
     private void RenderTopStickers(IReadOnlyList<StickerConfig>? stickers = null)
     {
         if (TopStickerCanvas is null) return;
+        var list = stickers ?? [];
+
+        // Decoding every GIF is by far the most expensive part of an apply, and
+        // ApplyConfiguration runs on unrelated slider moves. When the set of
+        // files is unchanged, update the existing frames in place instead.
+        var signature = string.Join('\u0001', list.Select(sticker => sticker.FilePath));
+        if (signature == _topStickerSignature && SignatureMatchesFrames(list))
+        {
+            UpdateTopStickerFrames(list);
+            return;
+        }
+        _topStickerSignature = signature;
+
         TopStickerCanvas.Children.Clear();
-        foreach (var sticker in stickers ?? [])
+        _topStickerFrames.Clear();
+        foreach (var sticker in list)
         {
             if (!File.Exists(sticker.FilePath)) continue;
             var image = new GifSticker(sticker.FilePath);
@@ -413,6 +450,48 @@ public partial class TopOverlayWindow : Window
                 Background = Brushes.Transparent, CornerRadius = new CornerRadius(8)
             };
             TopStickerCanvas.Children.Add(frame);
+            _topStickerFrames.Add((sticker, frame));
+        }
+        PositionTopStickers();
+    }
+
+    private bool SignatureMatchesFrames(IReadOnlyList<StickerConfig> list)
+    {
+        // Same file list, but a file may have appeared or disappeared since.
+        var expected = list.Count(sticker => File.Exists(sticker.FilePath));
+        return expected == _topStickerFrames.Count;
+    }
+
+    private void UpdateTopStickerFrames(IReadOnlyList<StickerConfig> list)
+    {
+        var frameIndex = 0;
+        foreach (var sticker in list)
+        {
+            if (!File.Exists(sticker.FilePath)) continue;
+            if (frameIndex >= _topStickerFrames.Count) break;
+            var (_, frame) = _topStickerFrames[frameIndex];
+            _topStickerFrames[frameIndex] = (sticker, frame);
+            frameIndex++;
+
+            // Guarded: an unchanged value would still trigger layout.
+            if (frame.Width != Math.Clamp(sticker.Size, 20, 70))
+                frame.Width = frame.Height = Math.Clamp(sticker.Size, 20, 70);
+            if (frame.Opacity != Math.Clamp(sticker.Opacity, 0.1, 1))
+                frame.Opacity = Math.Clamp(sticker.Opacity, 0.1, 1);
+        }
+        PositionTopStickers();
+    }
+
+    /// <summary>
+    /// Re-anchors the already-built sticker frames to the current canvas size.
+    /// Safe to call on every SizeChanged step: it is O(stickers) arithmetic and
+    /// never touches the GIF decoders.
+    /// </summary>
+    private void PositionTopStickers()
+    {
+        if (TopStickerCanvas is null) return;
+        foreach (var (sticker, frame) in _topStickerFrames)
+        {
             Canvas.SetLeft(frame, Math.Clamp(sticker.X, 0, 1) * Math.Max(0, TopStickerCanvas.ActualWidth - frame.Width));
             Canvas.SetTop(frame, Math.Clamp(sticker.Y, 0, 1) * Math.Max(0, TopStickerCanvas.ActualHeight - frame.Height));
         }

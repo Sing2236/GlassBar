@@ -18,6 +18,15 @@ public sealed class GifSticker : Image
         IsHitTestVisible = false;
         _timer.Tick += (_, _) => Advance();
         Unloaded += (_, _) => _timer.Stop();
+        // Window.Hide() does not fire Unloaded, so a sticker on a bar hidden for
+        // a fullscreen app would otherwise keep decoding frames nobody can see.
+        // IsVisible is effective (it follows the ancestor window), and the frame
+        // index is preserved, so revealing resumes exactly where it stopped.
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) { if (_frames.Count > 1) _timer.Start(); }
+            else _timer.Stop();
+        };
         Load(path);
     }
 

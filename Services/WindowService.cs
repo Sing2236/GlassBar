@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -244,9 +245,9 @@ public sealed class WindowService
     {
         try
         {
-            var sharedIcon = NativeMethods.SendMessage(window, NativeMethods.WM_GETICON, NativeMethods.ICON_SMALL2, nint.Zero);
-            if (sharedIcon == nint.Zero) sharedIcon = NativeMethods.SendMessage(window, NativeMethods.WM_GETICON, NativeMethods.ICON_SMALL, nint.Zero);
-            if (sharedIcon == nint.Zero) sharedIcon = NativeMethods.SendMessage(window, NativeMethods.WM_GETICON, NativeMethods.ICON_BIG, nint.Zero);
+            var sharedIcon = QueryWindowIcon(window, NativeMethods.ICON_SMALL2);
+            if (sharedIcon == nint.Zero) sharedIcon = QueryWindowIcon(window, NativeMethods.ICON_SMALL);
+            if (sharedIcon == nint.Zero) sharedIcon = QueryWindowIcon(window, NativeMethods.ICON_BIG);
             if (sharedIcon == nint.Zero) sharedIcon = NativeMethods.GetClassLongPtr(window, NativeMethods.GCLP_HICONSM);
             if (sharedIcon == nint.Zero) sharedIcon = NativeMethods.GetClassLongPtr(window, NativeMethods.GCLP_HICON);
             if (sharedIcon == nint.Zero)
@@ -267,6 +268,20 @@ public sealed class WindowService
             finally { NativeMethods.DestroyIcon(ownedIcon); }
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// WM_GETICON is a cross-process query. Plain SendMessage waits forever if
+    /// that app's UI thread is stuck, so ask with a short timeout and treat a
+    /// timeout as "no icon from this window" (the caller falls back to the
+    /// executable icon).
+    /// </summary>
+    private static nint QueryWindowIcon(nint window, int iconType)
+    {
+        const uint timeoutMilliseconds = 100;
+        var delivered = NativeMethods.SendMessageTimeout(window, NativeMethods.WM_GETICON, iconType, nint.Zero,
+            NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_BLOCK, timeoutMilliseconds, out var result);
+        return delivered == nint.Zero ? nint.Zero : result;
     }
 
     /// <summary>
@@ -299,41 +314,30 @@ public sealed class WindowService
             if (bitmap == nint.Zero) return null;
             previous = NativeMethods.SelectObject(memoryDc, bitmap);
 
-            var rendered = NativeMethods.PrintWindow(window, memoryDc, NativeMethods.PW_RENDERFULLCONTENT);
-            if (!rendered)
+            // PW_RENDERFULLCONTENT is the right first attempt for DWM-composed
+            // windows, but some GPU-rendered apps answer it with an all-white
+            // frame. Retrying with the classic flag, then with a screen copy,
+            // recovers a real image for most of those instead of showing a
+            // white card.
+            foreach (var flags in new[] { NativeMethods.PW_RENDERFULLCONTENT, 0u })
             {
-                var windowDc = NativeMethods.GetWindowDC(window);
-                if (windowDc != nint.Zero)
-                {
-                    try
-                    {
-                        rendered = NativeMethods.BitBlt(memoryDc, 0, 0, width, height, windowDc, 0, 0,
-                            NativeMethods.SRCCOPY | NativeMethods.CAPTUREBLT);
-                    }
-                    finally { NativeMethods.ReleaseDC(window, windowDc); }
-                }
+                if (!NativeMethods.PrintWindow(window, memoryDc, flags)) continue;
+                if (ToPreviewSize(bitmap) is { } candidate) return candidate;
             }
-            if (!rendered) return null;
 
-            var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, nint.Zero, System.Windows.Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
-            const int targetWidth = 144;
-            const int targetHeight = 224;
-            var scale = Math.Max(targetWidth / (double)source.PixelWidth, targetHeight / (double)source.PixelHeight);
-            var drawWidth = source.PixelWidth * scale;
-            var drawHeight = source.PixelHeight * scale;
-            var visual = new DrawingVisual();
-            using (var context = visual.RenderOpen())
-                context.DrawImage(source, new System.Windows.Rect(
-                    (targetWidth - drawWidth) / 2,
-                    (targetHeight - drawHeight) / 2,
-                    drawWidth,
-                    drawHeight));
+            var windowDc = NativeMethods.GetWindowDC(window);
+            if (windowDc != nint.Zero)
+            {
+                try
+                {
+                    if (NativeMethods.BitBlt(memoryDc, 0, 0, width, height, windowDc, 0, 0,
+                            NativeMethods.SRCCOPY | NativeMethods.CAPTUREBLT))
+                        if (ToPreviewSize(bitmap) is { } candidate) return candidate;
+                }
+                finally { NativeMethods.ReleaseDC(window, windowDc); }
+            }
 
-            var preview = new RenderTargetBitmap(targetWidth, targetHeight, 96, 96, PixelFormats.Pbgra32);
-            preview.Render(visual);
-            preview.Freeze();
-            return IsBlankPreview(preview) ? null : preview;
+            return null;
         }
         catch { return null; }
         finally
@@ -345,6 +349,42 @@ public sealed class WindowService
         }
     }
 
+    /// <summary>
+    /// Scales a raw window capture into the switcher's card size, returning
+    /// null when the result carries no usable image (blank or uniformly
+    /// white), which makes the caller try another capture method.
+    /// </summary>
+    private static ImageSource? ToPreviewSize(nint bitmap)
+    {
+        // Capture (PrintWindow/BitBlt) is deliberately callable off the UI
+        // thread so the Alt-Tab switcher can stream previews in without
+        // blocking, but the scaling below uses WPF visual objects. Hop to the
+        // dispatcher for that part so it never matters which thread called.
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+            return dispatcher.Invoke(() => ToPreviewSize(bitmap));
+
+        var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, nint.Zero, System.Windows.Int32Rect.Empty,
+            BitmapSizeOptions.FromEmptyOptions());
+        const int targetWidth = 144;
+        const int targetHeight = 224;
+        var scale = Math.Max(targetWidth / (double)source.PixelWidth, targetHeight / (double)source.PixelHeight);
+        var drawWidth = source.PixelWidth * scale;
+        var drawHeight = source.PixelHeight * scale;
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+            context.DrawImage(source, new System.Windows.Rect(
+                (targetWidth - drawWidth) / 2,
+                (targetHeight - drawHeight) / 2,
+                drawWidth,
+                drawHeight));
+
+        var preview = new RenderTargetBitmap(targetWidth, targetHeight, 96, 96, PixelFormats.Pbgra32);
+        preview.Render(visual);
+        preview.Freeze();
+        return IsBlankPreview(preview) ? null : preview;
+    }
+
     private static bool IsBlankPreview(BitmapSource preview)
     {
         var stride = preview.PixelWidth * 4;
@@ -353,6 +393,8 @@ public sealed class WindowService
         var minimum = 255;
         var maximum = 0;
         var visibleSamples = 0;
+        var nearWhiteSamples = 0;
+        var totalSamples = 0;
 
         for (var y = 0; y < preview.PixelHeight; y += 8)
         for (var x = 0; x < preview.PixelWidth; x += 8)
@@ -361,9 +403,17 @@ public sealed class WindowService
             var brightness = Math.Max(pixels[offset], Math.Max(pixels[offset + 1], pixels[offset + 2]));
             minimum = Math.Min(minimum, brightness);
             maximum = Math.Max(maximum, brightness);
+            totalSamples++;
             if (brightness > 14) visibleSamples++;
+            if (brightness >= 245) nearWhiteSamples++;
         }
 
-        return visibleSamples < 2 || maximum - minimum < 4;
+        // A failed PrintWindow on a composited window comes back as a solid
+        // white client area. Real light-themed windows still have text, edges
+        // or a frame somewhere in the sample grid, so "every sampled pixel is
+        // near-white" is the signature of a capture that told us nothing --
+        // the caller then falls back to the app icon.
+        var uniformlyWhite = minimum >= 245 && nearWhiteSamples >= totalSamples * 0.98;
+        return visibleSamples < 2 || maximum - minimum < 4 || uniformlyWhite;
     }
 }

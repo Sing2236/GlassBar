@@ -27,6 +27,20 @@ public partial class SearchPaletteWindow : Window
         InitializeComponent();
         ResultsList.ItemsSource = _results;
         Deactivated += (_, _) => ClosePalette();
+        // The installed-app index is built in the background and can take a
+        // while on a cold start (App.OnStartup warms it up). Rather than
+        // making the first search wait for it, show the results that need no
+        // index now and re-run the current query the moment it lands.
+        StartMenuService.IndexReady += OnStartMenuIndexReady;
+    }
+
+    private void OnStartMenuIndexReady()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!IsVisible) return;
+            _ = RefreshResultsAsync(debounce: false);
+        }));
     }
 
     public void Open(SearchPaletteMode mode, BarSettings settings)
@@ -238,7 +252,12 @@ public partial class SearchPaletteWindow : Window
         foreach (var result in results) _results.Add(result);
         ResultsList.SelectedIndex = results.Count > 0 ? 0 : -1;
         ResultCount.Text = query.Length == 0 ? string.Empty : results.Count == 1 ? "1 result" : $"{results.Count} results";
-        EmptyState.Visibility = query.Length > 0 && results.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var empty = query.Length > 0 && results.Count == 0;
+        EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        if (empty)
+            EmptyHint.Text = _mode != SearchPaletteMode.Web && !StartMenuService.IsIndexReady
+                ? "Still indexing installed apps — matches will appear automatically"
+                : _mode == SearchPaletteMode.Web ? "Type to search the web" : "Try a different search";
     }
 
     private void ModeButton_Click(object sender, RoutedEventArgs e)
