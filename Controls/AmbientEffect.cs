@@ -25,7 +25,36 @@ public sealed class AmbientEffect : FrameworkElement
     private static readonly Dictionary<(Color From, Color To, double Angle), LinearGradientBrush> _linearCache = [];
     private static readonly Dictionary<(Brush Brush, double Thickness), Pen> _penCache = [];
     private static readonly Dictionary<(Color Color, byte Alpha), RadialGradientBrush> _glowCache = [];
-    private const int PenCacheLimit = 1024;
+    // Generous enough that the live particle set (at most 72, each keeping its size for
+    // its lifetime) plus the alpha sweep fits without eviction. At 1024 the cache filled
+    // after a few minutes and every later miss then built a fresh Pen per particle per
+    // frame - thousands of allocations a second - which is exactly what the cache exists
+    // to prevent.
+    private const int PenCacheLimit = 8192;
+
+    // One unit diamond shared by every "Diamond" particle; each particle carries only a
+    // MatrixTransform that scales/translates it into place. Rebuilding a StreamGeometry
+    // per particle per frame was the most allocation-heavy path in DrawCustom.
+    private static readonly Geometry UnitDiamond = CreateUnitDiamond();
+
+    private static Geometry CreateUnitDiamond()
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(new Point(0, -1), true, true);
+            context.LineTo(new Point(1, 0), true, false);
+            context.LineTo(new Point(0, 1), true, false);
+            context.LineTo(new Point(-1, 0), true, false);
+        }
+        geometry.Freeze();
+        return geometry;
+    }
+
+    // Cached parse of CustomEffect.SecondaryColor. ColorConverter runs a string parser
+    // and is far too expensive to repeat for every particle on every frame.
+    private string? _customSecondarySource;
+    private Color _customSecondary = Color.FromRgb(167, 139, 250);
 
     public string Mode
     {
@@ -272,7 +301,12 @@ public sealed class AmbientEffect : FrameworkElement
 
     private void DrawCustom(DrawingContext dc)
     {
-        var second = ParseColor(CustomEffect.SecondaryColor, Color.FromRgb(167, 139, 250));
+        if (_customSecondarySource != CustomEffect.SecondaryColor)
+        {
+            _customSecondarySource = CustomEffect.SecondaryColor;
+            _customSecondary = ParseColor(_customSecondarySource, Color.FromRgb(167, 139, 250));
+        }
+        var second = _customSecondary;
         foreach (var particle in _particles)
         {
             var color = particle.Variant ? _accent : second;
@@ -309,16 +343,12 @@ public sealed class AmbientEffect : FrameworkElement
                     dc.DrawLine(dropPen, new Point(particle.X, particle.Y - trail), new Point(particle.X, particle.Y));
                     break;
                 case "Diamond":
-                    var geometry = new StreamGeometry();
-                    using (var context = geometry.Open())
-                    {
-                        context.BeginFigure(new Point(particle.X, particle.Y - size), true, true);
-                        context.LineTo(new Point(particle.X + size, particle.Y), true, false);
-                        context.LineTo(new Point(particle.X, particle.Y + size), true, false);
-                        context.LineTo(new Point(particle.X - size, particle.Y), true, false);
-                    }
-                    geometry.Freeze();
-                    dc.DrawGeometry(brush, null, geometry);
+                    // Same vertices as building the four-point figure around (X, Y):
+                    // the unit diamond scaled by `size` and translated there.
+                    particle.Transform.Matrix = new Matrix(size, 0, 0, size, particle.X, particle.Y);
+                    dc.PushTransform(particle.Transform);
+                    dc.DrawGeometry(brush, null, UnitDiamond);
+                    dc.Pop();
                     break;
                 default:
                     dc.DrawEllipse(brush, null, new Point(particle.X, particle.Y), size, size);
@@ -347,10 +377,14 @@ public sealed class AmbientEffect : FrameworkElement
 
     private void ResetParticle(Particle particle, bool initial)
     {
-        var next = NewParticle(initial);
-        particle.X = next.X; particle.Y = next.Y; particle.Speed = next.Speed;
-        particle.Length = next.Length; particle.Size = next.Size; particle.Opacity = next.Opacity;
-        particle.Phase = next.Phase; particle.Variant = next.Variant;
+        particle.X = _random.NextDouble() * Math.Max(1, ActualWidth);
+        particle.Y = initial ? _random.NextDouble() * Math.Max(1, ActualHeight) : -12;
+        particle.Speed = 34 + _random.NextDouble() * 68;
+        particle.Length = 5 + _random.NextDouble() * 13;
+        particle.Size = .65 + _random.NextDouble() * 1.15;
+        particle.Opacity = .35 + _random.NextDouble() * .65;
+        particle.Phase = _random.NextDouble() * Math.PI * 2;
+        particle.Variant = _random.Next(2) == 0;
     }
 
     private void Wrap(Particle particle)
@@ -377,5 +411,7 @@ public sealed class AmbientEffect : FrameworkElement
     {
         public double X, Y, Speed, Length, Size, Opacity, Phase;
         public bool Variant;
+        // Updated in place each frame for the "Diamond" shape; never frozen.
+        public readonly MatrixTransform Transform = new();
     }
 }

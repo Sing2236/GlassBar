@@ -50,16 +50,27 @@ public partial class AudioVisualizerWindow : Window
         // brush is never mutated afterwards, so one frozen instance is pixel-identical.
         var fill = new LinearGradientBrush(Color.FromArgb(235, start.R, start.G, start.B), Color.FromArgb(125, end.R, end.G, end.B), 90);
         fill.Freeze();
+        // Width, corner radius and alignment are constant for a given mode; they
+        // are set here, once per rebuild, instead of being reassigned on every
+        // 34ms frame. The mode can only change through ApplyConfiguration, which
+        // rebuilds the bars, so nothing is missed by not touching them in DrawFrame.
+        var isWave = _settings.AudioVisualizerMode == "Wave";
+        var alignment = _settings.AudioVisualizerMode switch
+        {
+            "Mirror" or "Wave" or "Pulse" => VerticalAlignment.Center,
+            "Rain" => VerticalAlignment.Top,
+            _ => VerticalAlignment.Bottom
+        };
         for (var index = 0; index < count; index++)
         {
             var bar = new Rectangle
             {
-                Width = 5,
-                Height = 4,
+                Width = isWave ? 7 : 5,
+                Height = isWave ? 7 : 4,
                 Margin = new Thickness(2, 0, 2, 0),
-                RadiusX = 3,
-                RadiusY = 3,
-                VerticalAlignment = VerticalAlignment.Bottom,
+                RadiusX = isWave ? 4 : 3,
+                RadiusY = isWave ? 4 : 3,
+                VerticalAlignment = alignment,
                 RenderTransform = new TranslateTransform(),
                 Fill = fill
             };
@@ -104,40 +115,33 @@ public partial class AudioVisualizerWindow : Window
 
         var now = DateTime.UtcNow.TimeOfDay.TotalMilliseconds;
         var availableHeight = Math.Max(24, ActualHeight - 42);
+        var mode = _settings.AudioVisualizerMode;
         for (var index = 0; index < _bars.Count; index++)
         {
             var bar = _bars[index];
             var sample = _history[Math.Min(_history.Length - 1, index / 2)];
             var wave = 0.68 + (Math.Sin((index * 0.78) + now * 0.012) + 1) * 0.16;
             var transform = (TranslateTransform)bar.RenderTransform;
-            transform.Y = 0;
-            bar.Width = _settings.AudioVisualizerMode == "Wave" ? 7 : 5;
-            bar.RadiusX = bar.RadiusY = _settings.AudioVisualizerMode == "Wave" ? 4 : 3;
 
-            switch (_settings.AudioVisualizerMode)
+            switch (mode)
             {
                 case "Mirror":
-                    bar.VerticalAlignment = VerticalAlignment.Center;
                     bar.Height = 5 + Math.Clamp(sample * wave * availableHeight, 0, availableHeight);
                     break;
                 case "Wave":
-                    bar.VerticalAlignment = VerticalAlignment.Center;
-                    bar.Height = 7;
+                    // Height (7) is set once in BuildBars and never varies.
                     transform.Y = Math.Sin(index * 0.62 + now * 0.008) * (6 + sample * availableHeight * 0.42);
                     break;
                 case "Pulse":
-                    bar.VerticalAlignment = VerticalAlignment.Center;
                     var distance = Math.Abs(index - (_bars.Count - 1) / 2d) / Math.Max(1, _bars.Count / 2d);
                     var pulse = (Math.Sin(now * 0.009 - distance * 4.2) + 1) / 2;
                     bar.Height = 5 + Math.Clamp(sample * pulse * availableHeight * (1.15 - distance * 0.45), 0, availableHeight);
                     break;
                 case "Rain":
-                    bar.VerticalAlignment = VerticalAlignment.Top;
                     bar.Height = 5 + Math.Clamp(sample * wave * availableHeight * 0.55, 0, availableHeight * 0.55);
                     transform.Y = (now * 0.045 + index * 19) % Math.Max(12, availableHeight * 0.55);
                     break;
                 default:
-                    bar.VerticalAlignment = VerticalAlignment.Bottom;
                     bar.Height = 4 + Math.Clamp(sample * wave * availableHeight, 0, availableHeight);
                     break;
             }

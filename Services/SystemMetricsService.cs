@@ -9,6 +9,26 @@ public sealed class SystemMetricsService
     private ulong _previousKernel;
     private ulong _previousUser;
 
+    // Enumerating adapters (and their lazily resolved properties) is much more
+    // expensive than the other metric reads, and the answer almost never
+    // changes. Cache it and invalidate from the OS's own network-change
+    // notifications, with a slow TTL only as a guard against a missed event.
+    private static readonly object ConnectionGate = new();
+    private static readonly TimeSpan ConnectionCacheTtl = TimeSpan.FromSeconds(30);
+    private static string? _cachedConnectionLabel;
+    private static DateTime _cachedConnectionAt;
+
+    static SystemMetricsService()
+    {
+        NetworkChange.NetworkAvailabilityChanged += (_, _) => InvalidateConnectionLabel();
+        NetworkChange.NetworkAddressChanged += (_, _) => InvalidateConnectionLabel();
+    }
+
+    private static void InvalidateConnectionLabel()
+    {
+        lock (ConnectionGate) _cachedConnectionLabel = null;
+    }
+
     public int CpuPercent()
     {
         if (!GetSystemTimes(out var idle, out var kernel, out var user)) return 0;
@@ -32,6 +52,20 @@ public sealed class SystemMetricsService
     }
 
     public string ConnectionLabel()
+    {
+        lock (ConnectionGate)
+        {
+            if (_cachedConnectionLabel is not null &&
+                DateTime.UtcNow - _cachedConnectionAt < ConnectionCacheTtl)
+                return _cachedConnectionLabel;
+
+            _cachedConnectionLabel = ResolveConnectionLabel();
+            _cachedConnectionAt = DateTime.UtcNow;
+            return _cachedConnectionLabel;
+        }
+    }
+
+    private static string ResolveConnectionLabel()
     {
         if (!NetworkInterface.GetIsNetworkAvailable()) return "Offline";
         var active = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(adapter =>
