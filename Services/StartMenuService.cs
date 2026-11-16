@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Interop;
@@ -18,6 +19,32 @@ public sealed class StartMenuService
     // WarmUp() actually useful instead of just indexing twice.
     private static readonly object CacheLock = new();
     private static Task<IReadOnlyList<LaunchableApp>>? _cacheTask;
+
+    // The finished index, published as one immutable list. Searches read this
+    // snapshot instead of awaiting the build: on a cold start the build can
+    // take minutes (Shell COM enumeration plus an icon lookup per app), and
+    // awaiting it was what made search look broken until it finished.
+    private static IReadOnlyList<LaunchableApp>? _indexedApps;
+
+    // The index is persisted so the next launch starts with a usable snapshot
+    // immediately instead of re-walking the Shell and Start Menu from scratch.
+    private static readonly TimeSpan CacheMaxAge = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Raised on a background thread once a usable index is published (either
+    /// loaded from the on-disk cache or freshly built). Subscribers must
+    /// marshal to their own thread before touching UI.
+    /// </summary>
+    public static event Action? IndexReady;
+
+    public static bool IsIndexReady => Volatile.Read(ref _indexedApps) is not null;
+
+    public static IReadOnlyList<LaunchableApp> GetIndexedApps() =>
+        Volatile.Read(ref _indexedApps) ?? Array.Empty<LaunchableApp>();
+
+    private static string CachePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "GlassBar", "app-index.json");
 
     /// <summary>
     /// Kicks off the (slow: enumerates every installed app via COM Shell,
@@ -56,30 +83,37 @@ public sealed class StartMenuService
         if (_cacheTask is not null) return _cacheTask;
         lock (CacheLock)
         {
-            return _cacheTask ??= Task.Run(LoadApps);
+            return _cacheTask ??= Task.Run(LoadIndex);
         }
     }
 
-    public async Task<IReadOnlyList<LaunchableApp>> SearchAppsAsync(
+    public Task<IReadOnlyList<LaunchableApp>> SearchAppsAsync(
         string query,
         CancellationToken cancellationToken,
         int maxResults = 18)
     {
         query = query.Trim();
-        var apps = await GetAppsAsync();
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (query.Length == 0)
-            return apps.OrderByDescending(app => app.IsSystemApp).ThenBy(app => app.Name).Take(maxResults).ToList();
+        // Deliberately does not await the build. Until the index is published
+        // this returns nothing and the palette shows its always-available
+        // results (open windows, browser history, the web action); the
+        // IndexReady event makes it re-run the query when the index lands.
+        var apps = GetIndexedApps();
+        if (apps.Count == 0) return Task.FromResult<IReadOnlyList<LaunchableApp>>([]);
 
-        return apps
+        if (query.Length == 0)
+            return Task.FromResult<IReadOnlyList<LaunchableApp>>(
+                apps.OrderByDescending(app => app.IsSystemApp).ThenBy(app => app.Name).Take(maxResults).ToList());
+
+        return Task.FromResult<IReadOnlyList<LaunchableApp>>(apps
             .Select(app => (App: app, Score: MatchScore(app, query)))
             .Where(match => match.Score > 0)
             .OrderByDescending(match => match.Score)
             .ThenBy(match => match.App.Name)
             .Take(maxResults)
             .Select(match => match.App)
-            .ToList();
+            .ToList());
     }
 
     public async Task<IReadOnlyList<LaunchableApp>> SearchAsync(string query, CancellationToken cancellationToken)
@@ -116,6 +150,143 @@ public sealed class StartMenuService
         Process.Start(new ProcessStartInfo(app.Path) { UseShellExecute = true });
     }
 
+    private static IReadOnlyList<LaunchableApp> LoadIndex()
+    {
+        var cached = TryLoadCache();
+        if (cached is { Count: > 0 })
+        {
+            Publish(cached);
+            // A recent cache is good enough: skip the multi-minute rebuild and
+            // save the CPU/Shell churn that used to run on every launch.
+            if (!IsCacheStale()) return cached;
+        }
+
+        var apps = LoadApps();
+        Publish(apps);
+        TrySaveCache(apps);
+        return apps;
+    }
+
+    private static void Publish(IReadOnlyList<LaunchableApp> apps)
+    {
+        Volatile.Write(ref _indexedApps, apps);
+        try { IndexReady?.Invoke(); } catch { }
+    }
+
+    private static IEnumerable<string> StartMenuRoots()
+    {
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+    }
+
+    private static bool IsCacheStale()
+    {
+        try
+        {
+            if (!File.Exists(CachePath)) return true;
+            var built = File.GetLastWriteTimeUtc(CachePath);
+            if (DateTime.UtcNow - built > CacheMaxAge) return true;
+            foreach (var root in StartMenuRoots())
+                if (Directory.Exists(root) && Directory.GetLastWriteTimeUtc(root) > built) return true;
+            return false;
+        }
+        catch { return true; }
+    }
+
+    private sealed class CachedApp
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Path { get; set; } = string.Empty;
+        public string Subtitle { get; set; } = "App";
+        public string Kind { get; set; } = "App";
+        public string SearchTerms { get; set; } = string.Empty;
+        public bool IsSystemApp { get; set; }
+        public string? IconPng { get; set; }
+    }
+
+    private static IReadOnlyList<LaunchableApp>? TryLoadCache()
+    {
+        try
+        {
+            if (!File.Exists(CachePath)) return null;
+            var cached = JsonSerializer.Deserialize<List<CachedApp>>(File.ReadAllBytes(CachePath));
+            if (cached is not { Count: > 0 }) return null;
+            return cached
+                .Where(app => !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.Path))
+                .Select(app => new LaunchableApp
+                {
+                    Name = app.Name,
+                    Path = app.Path,
+                    Subtitle = app.Subtitle,
+                    Kind = app.Kind,
+                    SearchTerms = app.SearchTerms,
+                    IsSystemApp = app.IsSystemApp,
+                    Icon = DecodeIcon(app.IconPng)
+                })
+                .ToList();
+        }
+        catch { return null; }
+    }
+
+    private static void TrySaveCache(IReadOnlyList<LaunchableApp> apps)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(CachePath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+
+            var cached = apps.Select(app => new CachedApp
+            {
+                Name = app.Name,
+                Path = app.Path,
+                Subtitle = app.Subtitle,
+                Kind = app.Kind,
+                SearchTerms = app.SearchTerms,
+                IsSystemApp = app.IsSystemApp,
+                IconPng = EncodeIcon(app.Icon)
+            }).ToList();
+
+            // Write beside the target and rename over it so a crash mid-write
+            // can never leave a truncated cache that fails to parse.
+            var temporary = CachePath + ".tmp";
+            File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(cached));
+            File.Move(temporary, CachePath, overwrite: true);
+        }
+        catch { }
+    }
+
+    private static string? EncodeIcon(ImageSource? icon)
+    {
+        if (icon is not BitmapSource bitmap) return null;
+        try
+        {
+            if (!bitmap.IsFrozen && bitmap.CanFreeze) bitmap.Freeze();
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = new MemoryStream();
+            encoder.Save(stream);
+            return Convert.ToBase64String(stream.ToArray());
+        }
+        catch { return null; }
+    }
+
+    private static ImageSource? DecodeIcon(string? base64)
+    {
+        if (string.IsNullOrEmpty(base64)) return null;
+        try
+        {
+            using var stream = new MemoryStream(Convert.FromBase64String(base64));
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = stream;
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch { return null; }
+    }
+
     private static IReadOnlyList<LaunchableApp> LoadApps()
     {
         var appsFolder = LoadAppsFolder();
@@ -126,11 +297,7 @@ public sealed class StartMenuService
             .ToList();
         apps.AddRange(appsFolder);
 
-        var roots = new[]
-        {
-            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu)
-        };
+        var roots = StartMenuRoots().ToArray();
 
         foreach (var root in roots.Where(Directory.Exists))
         {

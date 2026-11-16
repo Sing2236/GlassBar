@@ -77,6 +77,7 @@ public partial class MainWindow : Window
     private Point _dragOrigin;
     private BarSettings _settings;
     private bool _settingsOpen;
+    private SettingsWindow? _settingsWindow;
     private bool _backgroundProcessesOpen;
     private bool _hiddenForFullscreen;
     private bool _widthDragActive;
@@ -104,6 +105,14 @@ public partial class MainWindow : Window
         PinnedApps.ItemsSource = _pinnedApps;
         BackgroundProcessesList.ItemsSource = _backgroundProcesses;
         ApplySettings();
+
+        // The panel is declared here so every handler and live-preview path
+        // stays in this class, but it is hosted by SettingsWindow (a separate
+        // centred modal). Detach it from the bar's visual tree; the named
+        // fields remain valid and ApplySettings keeps working.
+        WindowRoot.Children.Remove(SettingsPanel);
+        SettingsPanel.AddHandler(Button.ClickEvent,
+            new RoutedEventHandler((_, _) => UpdateChoiceSelections()), handledEventsToo: true);
 
         Loaded += OnLoaded;
         Deactivated += OnDeactivated;
@@ -155,7 +164,8 @@ public partial class MainWindow : Window
 
     private void OnDeactivated(object? sender, EventArgs e)
     {
-        if (_settingsOpen) SetSettingsOpen(false);
+        // Settings now lives in its own window: clicking into it deactivates
+        // the bar, so this must not close it the way the old flyout did.
         if (_backgroundProcessesOpen) SetBackgroundProcessesOpen(false);
     }
 
@@ -179,6 +189,7 @@ public partial class MainWindow : Window
         UnregisterFullscreenWinEventHooks();
         _startMenu?.Close();
         _searchPalette?.Close();
+        _settingsWindow?.Close();
         _topOverlay?.Close();
         _audioVisualizer?.Close();
         var handle = new WindowInteropHelper(this).Handle;
@@ -353,9 +364,7 @@ public partial class MainWindow : Window
         var maxLength = Math.Max(520, (IsBarVertical ? screenHeight : screenWidth) - 24);
         var barLength = Math.Clamp(_settings.BarWidth, 520, maxLength);
         var barThickness = Math.Clamp(_settings.BarHeight, 60, 82) + 8;
-        var popupSize = _settingsOpen
-            ? Math.Min(650, (IsBarVertical ? screenWidth : screenHeight) - barThickness - 18)
-            : _backgroundProcessesOpen ? 324
+        var popupSize = _backgroundProcessesOpen ? 324
             : _expandedFanGroup is not null ? StackFanPanelSize(_expandedFanGroup)
             : 0;
 
@@ -403,14 +412,11 @@ public partial class MainWindow : Window
 
     private void PlacePopupPanels(int row, int column, bool horizontal)
     {
-        foreach (var panel in new[] { SettingsPanel, BackgroundProcessesPanel, StackFanPanel })
+        foreach (var panel in new[] { BackgroundProcessesPanel, StackFanPanel })
         {
             Grid.SetRow(panel, row);
             Grid.SetColumn(panel, column);
         }
-        SettingsPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
-        SettingsPanel.VerticalAlignment = horizontal ? VerticalAlignment.Stretch : VerticalAlignment.Center;
-        SettingsPanel.Margin = horizontal ? new Thickness(0, 8, 8, 8) : new Thickness(8);
         BackgroundProcessesPanel.HorizontalAlignment = horizontal ? HorizontalAlignment.Right : HorizontalAlignment.Center;
         BackgroundProcessesPanel.VerticalAlignment = horizontal ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         BackgroundProcessesPanel.Margin = new Thickness(8);
@@ -679,6 +685,10 @@ public partial class MainWindow : Window
 
         if (shouldHide)
         {
+            // Nothing renders while hidden, so the per-second window enumeration,
+            // badge fetch and app-page rebuild are pure waste during a fullscreen
+            // game. Stop them; the reveal path below refreshes before showing.
+            _refreshTimer.Stop();
             _startMenu?.Hide();
             SetSettingsOpen(false);
             HideStackFan();
@@ -690,6 +700,10 @@ public partial class MainWindow : Window
 
         ShowActivated = false;
         Show();
+        // Rebuild the app list before the first visible frame so it does not show
+        // data from whenever fullscreen started.
+        RefreshBar();
+        _refreshTimer.Start();
         if (_settings.TopOverlayEnabled) _topOverlay?.Show();
         if (_settings.AudioVisualizerEnabled) _audioVisualizer?.Show();
     }
@@ -710,7 +724,11 @@ public partial class MainWindow : Window
         }
         if (ColorConverter.ConvertFromString(_settings.Accent) is Color accent)
         {
-            Resources["AccentBrush"] = new SolidColorBrush(accent);
+            var accentBrush = new SolidColorBrush(accent);
+            Resources["AccentBrush"] = accentBrush;
+            // The settings panel is reparented into SettingsWindow, so its
+            // DynamicResource lookups resolve against that window's dictionary.
+            if (_settingsWindow is not null) _settingsWindow.Resources["AccentBrush"] = accentBrush;
             EffectsLayer.Accent = accent;
         }
         EffectsLayer.CustomEffect = _settings.CustomEffect;
@@ -785,7 +803,46 @@ public partial class MainWindow : Window
         StickerOpacitySlider.IsEnabled = _settings.Stickers.Count > 0;
         RefreshPinnedApps();
         ApplyBarOrientationLayout();
+        UpdateChoiceSelections();
         if (premiumEffectReset || premiumFeatureReset) SaveSettings();
+    }
+
+    /// <summary>
+    /// Paints the current value onto each option group. Choice buttons carry
+    /// their value in Tag (the click handlers read it), so selection state is
+    /// the attached Choice.IsSelected flag set here rather than a Tag hack.
+    /// </summary>
+    private void UpdateChoiceSelections()
+    {
+        if (_settings is null) return;
+        MarkChoice(EffectChoices, _settings.Effect);
+        MarkChoice(BarOrientationChoices, _settings.BarOrientation);
+        MarkChoice(StartMenuDensityChoices, _settings.StartMenuDensity);
+        MarkChoice(AudioModeChoices, _settings.AudioVisualizerMode);
+        MarkChoice(AudioPaletteChoices, _settings.AudioVisualizerPalette);
+        MarkChoice(AudioBackgroundChoices, _settings.AudioVisualizerBackground);
+        MarkChoice(AudioBorderChoices, _settings.AudioVisualizerBorder);
+        MarkChoice(TopBarOrientationChoices, _settings.TopBarOrientation);
+        MarkChoice(FocusDurationChoices, _settings.TopFocusMinutes.ToString());
+        MarkChoice(AltTabLayoutChoices, _settings.AltTabLayout);
+        MarkChoice(AltTabBackgroundChoices, _settings.AltTabBackground);
+        MarkChoice(CustomShapeChoices, _settings.CustomEffect.Shape);
+        MarkChoice(CustomMotionChoices, _settings.CustomEffect.Motion);
+        MarkChoice(LookAccentChoices, _settings.Accent);
+        MarkChoice(StartMenuSurfaceChoices, _settings.StartMenuBackground);
+        MarkChoice(StartMenuHighlightChoices, _settings.StartMenuAccent);
+        MarkChoice(SearchBackgroundChoices, _settings.SearchPaletteBackground);
+        MarkChoice(SearchTextChoices, _settings.SearchPaletteText);
+        MarkChoice(SearchHighlightChoices, _settings.SearchPaletteAccent);
+        MarkChoice(CustomColorChoices, _settings.CustomEffect.SecondaryColor);
+    }
+
+    private static void MarkChoice(Panel group, string? value)
+    {
+        foreach (var child in group.Children)
+            if (child is Button { Tag: string tag } button)
+                Choice.SetIsSelected(button,
+                    string.Equals(tag, value, StringComparison.OrdinalIgnoreCase));
     }
 
     private void SaveSettings() => _settingsService.Save(_settings);
@@ -1133,9 +1190,8 @@ public partial class MainWindow : Window
     private void WindowRoot_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source) return;
-        if (_settingsOpen && !IsWithin(source, SettingsPanel) && !IsWithin(source, SettingsButton)
-            && !IsStickerInteraction(source))
-            SetSettingsOpen(false);
+        // Settings closes from inside its own modal (backdrop, Escape, close
+        // button), never from a click in the bar.
         if (_backgroundProcessesOpen && !IsWithin(source, BackgroundProcessesPanel) && !IsWithin(source, BarSurface))
             SetBackgroundProcessesOpen(false);
         if (_expandedFanGroup is not null && !IsWithin(source, StackFanPanel) && !IsWithin(source, BarSurface))
@@ -1149,13 +1205,6 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private static bool IsStickerInteraction(DependencyObject source)
-    {
-        for (var current = source; current is not null; current = GetParent(current))
-            if (current is Border { Tag: StickerConfig }) return true;
-        return false;
-    }
-
     private static DependencyObject? GetParent(DependencyObject child)
     {
         try { return VisualTreeHelper.GetParent(child); }
@@ -1164,18 +1213,48 @@ public partial class MainWindow : Window
 
     private void SetSettingsOpen(bool open)
     {
-        if (open) _startMenu?.Hide();
-        if (open) HideStackFan();
-        if (open && _backgroundProcessesOpen)
+        if (open)
         {
-            _backgroundProcessesOpen = false;
-            BackgroundProcessesPanel.Visibility = Visibility.Collapsed;
+            if (_settingsOpen) return;
+            _settingsOpen = true;
+            _startMenu?.Hide();
+            HideStackFan();
+            if (_backgroundProcessesOpen)
+            {
+                _backgroundProcessesOpen = false;
+                BackgroundProcessesPanel.Visibility = Visibility.Collapsed;
+                UpdateWindowHeight();
+            }
+            ShowSettingsPage(_settingsPage);
+            UpdateChoiceSelections();
+            StickerCanvas.IsHitTestVisible = true;
+            RenderStickers();
+            _settingsWindow ??= new SettingsWindow(this);
+            _settingsWindow.Open(SettingsPanel);
+            return;
         }
-        _settingsOpen = open;
-        SettingsPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-        if (open) ShowSettingsPage(_settingsPage);
-        StickerCanvas.IsHitTestVisible = open;
-        UpdateWindowHeight();
+
+        if (!_settingsOpen) return;
+        _settingsOpen = false;
+        _settingsWindow?.Hide();
+        StickerCanvas.IsHitTestVisible = false;
+        RenderStickers();
+    }
+
+    /// <summary>Closes settings from inside the modal (Escape, backdrop, close).</summary>
+    internal void CloseSettings() => SetSettingsOpen(false);
+
+    /// <summary>
+    /// The modal was really closed (Alt+F4) rather than hidden. Forget it so
+    /// the next open builds a fresh window instead of touching a dead one.
+    /// </summary>
+    internal void SettingsWindowClosed()
+    {
+        _settingsWindow = null;
+        if (!_settingsOpen) return;
+        _settingsOpen = false;
+        if (!IsLoaded) return;
+        StickerCanvas.IsHitTestVisible = false;
         RenderStickers();
     }
 
@@ -1184,7 +1263,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void SettingsNav_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Content: string category }) ShowSettingsPage(category);
+        if (sender is Button { Tag: string category }) ShowSettingsPage(category);
     }
 
     private void ShowSettingsPage(string category)
@@ -1204,7 +1283,7 @@ public partial class MainWindow : Window
                      (SettingsNavOverlay, "Overlay"), (SettingsNavAltTab, "Alt-Tab"), (SettingsNavThemes, "Themes"),
                      (SettingsNavPro, "Pro")
                  })
-            button.Tag = name == category ? "Selected" : null;
+            Choice.SetIsSelected(button, name == category);
 
         // The theme list is rebuilt only when its page is shown (or after a
         // debounced watcher event), never from a render or tick path.
@@ -1726,7 +1805,9 @@ public partial class MainWindow : Window
     {
         if (sender is not Button { Tag: string value } || ColorConverter.ConvertFromString(value) is not Color accent) return;
         _settings.Accent = value;
-        Resources["AccentBrush"] = new SolidColorBrush(accent);
+        var accentBrush = new SolidColorBrush(accent);
+        Resources["AccentBrush"] = accentBrush;
+        if (_settingsWindow is not null) _settingsWindow.Resources["AccentBrush"] = accentBrush;
         EffectsLayer.Accent = accent;
         _topOverlay?.ApplyAppearance(_settings);
         SaveSettings();

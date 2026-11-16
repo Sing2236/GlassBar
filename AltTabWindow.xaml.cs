@@ -16,6 +16,7 @@ public partial class AltTabWindow : Window
     private readonly WindowService _windowService = new();
     private readonly ObservableCollection<AppItem> _items = [];
     private bool _hiding;
+    private int _previewGeneration;
 
     public AltTabWindow()
     {
@@ -26,7 +27,12 @@ public partial class AltTabWindow : Window
     public bool Open(BarSettings settings, bool reverse)
     {
         _items.Clear();
-        foreach (var item in _windowService.GetOpenWindows(includePreviews: true)) _items.Add(item);
+        // Icons only for the first frame. PrintWindow is a per-window GDI
+        // round trip that can take hundreds of milliseconds on a slow machine
+        // or a busy app; capturing every preview inline here was what made the
+        // switcher feel laggy. Previews stream in afterwards (see
+        // StartPreviewCapture) and each card upgrades from its icon in place.
+        foreach (var item in _windowService.GetOpenWindows(includePreviews: false)) _items.Add(item);
         if (_items.Count == 0) return false;
 
         ApplyAppearance(settings);
@@ -43,7 +49,33 @@ public partial class AltTabWindow : Window
         PositionOnWorkArea();
         WindowList.ScrollIntoView(WindowList.SelectedItem);
         AnimateOpen();
+        StartPreviewCapture();
         return true;
+    }
+
+    /// <summary>
+    /// Captures window previews one at a time off the UI thread and assigns
+    /// each as it arrives. A generation counter invalidates the loop when the
+    /// switcher closes or reopens, so a capture in flight cannot paint a
+    /// preview onto a later invocation's item list.
+    /// </summary>
+    private void StartPreviewCapture()
+    {
+        var generation = ++_previewGeneration;
+        var items = _items.ToArray();
+        _ = Task.Run(() =>
+        {
+            foreach (var item in items)
+            {
+                if (generation != Volatile.Read(ref _previewGeneration)) return;
+                var preview = WindowService.CapturePreview(item.Handle);
+                if (preview is null) continue;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (generation == _previewGeneration) item.Preview = preview;
+                }));
+            }
+        });
     }
 
     public void Roll(bool reverse)
@@ -149,6 +181,8 @@ public partial class AltTabWindow : Window
 
     private void HideAnimated(Action? afterHide)
     {
+        // Abandon any preview captures still running for this invocation.
+        _previewGeneration++;
         if (_hiding || !IsVisible) return;
         _hiding = true;
         var fade = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(125));

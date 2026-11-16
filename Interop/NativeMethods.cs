@@ -23,6 +23,8 @@ internal static class NativeMethods
     internal const uint MOD_NOREPEAT = 0x4000;
     internal const int WM_HOTKEY = 0x0312;
     internal const int WM_GETICON = 0x007F;
+    internal const uint SMTO_ABORTIFHUNG = 0x0002;
+    internal const uint SMTO_BLOCK = 0x0001;
     internal const int WM_CLOSE = 0x0010;
     internal const int WM_KEYDOWN = 0x0100;
     internal const int WM_KEYUP = 0x0101;
@@ -230,6 +232,14 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern nint SendMessage(nint hWnd, int message, nint wParam, nint lParam);
+
+    // Used instead of SendMessage for anything aimed at another process:
+    // SendMessage blocks the UI thread indefinitely when the target app is
+    // hung, which made the whole bar lock up behind a single unresponsive
+    // window. The timeout turns that into a missed icon at worst.
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern nint SendMessageTimeout(nint hWnd, int message, nint wParam, nint lParam,
+        uint flags, uint timeout, out nint result);
 
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern bool PostMessage(nint hWnd, int message, nint wParam, nint lParam);
