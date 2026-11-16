@@ -25,6 +25,15 @@ public partial class SettingsWindow : Window
         _owner = owner;
         InitializeComponent();
         Owner = owner;
+        // Activation can arrive after Open() (and can be refused by Windows'
+        // foreground lock when the window was opened programmatically). Put
+        // keyboard focus on the rail whenever we do become active, unless the
+        // user is already typing in a control inside the panel.
+        Activated += (_, _) =>
+        {
+            if (IsKeyboardFocusWithin) return;
+            if (FindRailButton(PanelHost) is { } first) Keyboard.Focus(first);
+        };
     }
 
     public void Open(UIElement panel)
